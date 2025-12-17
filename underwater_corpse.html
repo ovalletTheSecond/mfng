@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deep End</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html {
+      width: 100%;
+      height: 100%;
+      font-size: 18px;
+    }
+    
+    body {
+      background: #000;
+      width: 100%;
+      min-height: 100%;
+      display: flex;
+      overflow: hidden;
+    }
+    
+    svg {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    
+    /* Corpse image styling */
+    .corpse-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+    }
+    
+    .corpse-container.visible {
+      opacity: 1;
+    }
+    
+    .corpse-img {
+      width: 300px;
+      height: 300px;
+      object-fit: contain;
+      filter: blur(8px) opacity(0.3);
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0px);
+        filter: blur(8px) opacity(0.3);
+      }
+      50% {
+        transform: translateY(-20px);
+        filter: blur(10px) opacity(0.2);
+      }
+    }
+    
+    /* Water droplet styles */
+    .drop {
+      position: relative;
+      position: absolute;
+      transform-origin: 50% 50%;
+      transform: translate(-50%, -50%);
+      width: 50vmin;
+      height: 50vmin;
+      border-radius: 50%;
+      filter: blur(0.5vmin);
+      box-shadow: -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2), inset -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), inset 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2);
+      border: 0 solid rgba(211, 211, 211, 0.2);
+      animation: expand 4s cubic-bezier(0.165, 0.84, 0.44, 1), fadeOut 3s linear 1s forwards;
+    }
+    
+    @keyframes expand {
+      0% {
+        width: 0;
+        height: 0;
+        box-shadow: -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2), inset -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), inset 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2);
+        border: 0 solid rgba(211, 211, 211, 0.2);
+      }
+      5% {
+        box-shadow: -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2), inset -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), inset 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2);
+        border: 2vmin solid rgba(211, 211, 211, 0.2);
+      }
+      90% {
+        box-shadow: none;
+        border: 2vmin solid rgba(211, 211, 211, 0.2);
+      }
+      100% {
+        width: 100vmin;
+        height: 100vmin;
+        box-shadow: none;
+        border: 0 solid rgba(211, 211, 211, 0.2);
+      }
+    }
+    
+    .drop:before {
+      content: '';
+      position: absolute;
+      margin: auto;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 0%;
+      height: 0%;
+      border-radius: 50%;
+      animation: expand1 4s cubic-bezier(0.165, 0.84, 0.44, 1);
+      box-shadow: -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2), inset -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), inset 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2);
+    }
+    
+    @keyframes expand1 {
+      0% {
+        width: 0%;
+        height: 0%;
+        box-shadow: -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2), inset -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), inset 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2);
+        border: 0 solid rgba(211, 211, 211, 0.2);
+      }
+      20% {
+        box-shadow: -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2), inset -5vmin -5vmin 5vmin rgba(211, 211, 211, 0.2), inset 5vmin 5vmin 5vmin rgba(211, 211, 211, 0.2);
+      }
+      100% {
+        width: 60%;
+        height: 60%;
+        box-shadow: none;
+        border: 1vmin solid rgba(211, 211, 211, 0.2);
+      }
+    }
+    
+    @keyframes fadeOut {
+      0% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+    
+    /* PIXI Canvas wrapper */
+    .canvas-wrapper {
+      position: absolute;
+      overflow: hidden;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
+    
+    .canvas-wrapper canvas {
+      display: block;
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- note: this effect works best on chrome -->
+  
+  <div id="js-canvas-wrapper" class="canvas-wrapper"></div>
+  
+  <div class="corpse-container" id="corpseContainer">
+    <img class="corpse-img" src="https://tekkydesign.com/images/products/RottedSkull.png" alt="Underwater corpse">
+  </div>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.8.2/pixi.min.js"></script>
+  
+  <script>
+    // PIXI Underwater effect
+    (function() {
+      window.CanvasSlideshow = function(options) {
+        var that = this;
+        
+        options = options || {};
+        options.stageWidth = options.hasOwnProperty('stageWidth') ? options.stageWidth : 1920;
+        options.stageHeight = options.hasOwnProperty('stageHeight') ? options.stageHeight : 1080;
+        options.pixiSprites = options.hasOwnProperty('sprites') ? options.sprites : [];
+        options.centerSprites = options.hasOwnProperty('centerSprites') ? options.centerSprites : false;
+        options.autoPlay = options.hasOwnProperty('autoPlay') ? options.autoPlay : true;
+        options.autoPlaySpeed = options.hasOwnProperty('autoPlaySpeed') ? options.autoPlaySpeed : [10, 3];
+        options.fullScreen = options.hasOwnProperty('fullScreen') ? options.fullScreen : true;
+        options.displacementImage = options.hasOwnProperty('displacementImage') ? options.displacementImage : '';
+        options.displaceAutoFit = options.hasOwnProperty('displaceAutoFit') ? options.displaceAutoFit : false;
+        options.wacky = options.hasOwnProperty('wacky') ? options.wacky : false;
+        
+        var renderer = new PIXI.autoDetectRenderer(options.stageWidth, options.stageHeight, { transparent: true });
+        var stage = new PIXI.Container();
+        var slidesContainer = new PIXI.Container();
+        var displacementSprite = PIXI.Sprite.from(options.displacementImage);
+        var displacementFilter = new PIXI.filters.DisplacementFilter(displacementSprite);
+        
+        this.initPixi = function() {
+          document.getElementById('js-canvas-wrapper').appendChild(renderer.view);
+          stage.addChild(slidesContainer);
+          stage.interactive = true;
+          
+          if (options.fullScreen === true) {
+            renderer.view.style.objectFit = 'cover';
+            renderer.view.style.width = '100%';
+            renderer.view.style.height = '100%';
+            renderer.view.style.top = '50%';
+            renderer.view.style.left = '50%';
+            renderer.view.style.webkitTransform = 'translate(-50%, -50%) scale(1.1)';
+            renderer.view.style.transform = 'translate(-50%, -50%) scale(1.1)';
+          }
+          
+          displacementSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+          stage.filters = [displacementFilter];
+          
+          if (options.autoPlay === false) {
+            displacementFilter.scale.x = 0;
+            displacementFilter.scale.y = 0;
+          }
+          
+          displacementSprite.scale.x = 2;
+          displacementSprite.scale.y = 2;
+          displacementFilter.autoFit = options.displaceAutoFit;
+          stage.addChild(displacementSprite);
+        };
+        
+        this.loadPixiSprites = function(sprites) {
+          var rSprites = options.sprites;
+          for (var i = 0; i < rSprites.length; i++) {
+            var texture = PIXI.Texture.from(sprites[i]);
+            var image = new PIXI.Sprite(texture);
+            if (options.centerSprites === true) {
+              image.anchor.set(0.5);
+              image.x = renderer.width / 2;
+              image.y = renderer.height / 2;
+            }
+            slidesContainer.addChild(image);
+          }
+        };
+        
+        if (options.autoPlay === true) {
+          var ticker = PIXI.ticker.shared;
+          ticker.autoStart = options.autoPlay;
+          ticker.add(function(delta) {
+            displacementSprite.x += options.autoPlaySpeed[0] * delta;
+            displacementSprite.y += options.autoPlaySpeed[1];
+            renderer.render(stage);
+          });
+        }
+        
+        this.init = function() {
+          that.initPixi();
+          that.loadPixiSprites(options.pixiSprites);
+        };
+        
+        this.init();
+      };
+    })();
+    
+    var spriteImagesSrc = [];
+    spriteImagesSrc.push('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QCBRXhpZgAASUkqAAgAAAADAA4BAgA3AAAAMgAAABoBBQABAAAAaQAAABsBBQABAAAAcQAAAAAAAABPbGQgaHVtYW4gc2t1bGwgb24gdGhlIG9jZWFuIGZsb29yIGlzIGxpdCB1cCB3aXRoIHRvcmNoLAEAAAEAAAAsAQAAAQAAAP/hBaxodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+Cjx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iPgoJPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KCQk8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczpwaG90b3Nob3A9Imh0dHA6Ly9ucy5hZG9iZS5jb20vcGhvdG9zaG9wLzEuMC8iIHhtbG5zOklwdGM0eG1wQ29yZT0iaHR0cDovL2lwdGMub3JnL3N0ZC9JcHRjNHhtcENvcmUvMS4wL3htbG5zLyIgICB4bWxuczpHZXR0eUltYWdlc0dJRlQ9Imh0dHA6Ly94bXAuZ2V0dHlpbWFnZXMuY29tL2dpZnQvMS4wLyIgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIiB4bWxuczpwbHVzPSJodHRwOi8vbnMudXNlcGx1cy5vcmcvbGRmL3htcC8xLjAvIiAgeG1sbnM6aXB0Y0V4dD0iaHR0cDovL2lwdGMub3JnL3N0ZC9JcHRjNHhtcEV4dC8yMDA4LTAyLTI5LyIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgcGhvdG9zaG9wOkNyZWRpdD0iR2V0dHkgSW1hZ2VzIiBHZXR0eUltYWdlc0dJRlQ6QXNzZXRJRD0iMTE2MTc4OTM3OCIgeG1wUmlnaHRzOldlYlN0YXRlbWVudD0iaHR0cHM6Ly93d3cuaXN0b2NrcGhvdG8uY29tL2xlZ2FsL2xpY2Vuc2UtYWdyZWVtZW50P3V0bV9tZWRpdW09b3JnYW5pYyZhbXA7dXRtX3NvdXJjZT1nb29nbGUmYW1wO3V0bV9jYW1wYWlnbj1pcHRjdXJsIiBwbHVzOkRhdGFNaW5pbmc9Imh0dHA6Ly9ucy51c2VwbHVzLm9yZy9sZGYvdm9jYWIvRE1JLVBST0hJQklURUQtRVhDRVBUU0VBUkNIRU5HSU5FSU5ERVhJTkciID4KPGRjOmNyZWF0b3I+PHJkZjpTZXE+PHJkZjpsaT5Sb2NrZm9yZE1lZGlhPC9yZGY6bGk+PC9yZGY6U2VxPjwvZGM6Y3JlYXRvcj48ZGM6ZGVzY3JpcHRpb24+PHJkZjpBbHQ+PHJkZjpsaSB4bWw6bGFuZz0ieC1kZWZhdWx0Ij5PbGQgaHVtYW4gc2t1bGwgb24gdGhlIG9jZWFuIGZsb29yIGlzIGxpdCB1cCB3aXRoIHRvcmNoPC9yZGY6bGk+PC9yZGY6QWx0PjwvZGM6ZGVzY3JpcHRpb24+CjxwbHVzOkxpY2Vuc29yPjxyZGY6U2VxPjxyZGY6bGkgcmRmOnBhcnNlVHlwZT0nUmVzb3VyY2UnPjxwbHVzOkxpY2Vuc29yVVJMPmh0dHBzOi8vd3d3LmlzdG9ja3Bob3RvLmNvbS9waG90by9saWNlbnNlLWdtMTE2MTc4OTM3OC0/dXRtX21lZGl1bT1vcmdhbmljJmFtcDt1dG1fc291cmNlPWdvb2dsZSZhbXA7dXRtX2NhbXBhaWduPWlwdGN1cmw8L3BsdXM6TGljZW5zb3JVUkw+PC9yZGY6bGk+PC9yZGY6U2VxPjwvcGx1czpMaWNlbnNvcj4KCQk8L3JkZjpEZXNjcmlwdGlvbj4KCTwvcmRmOlJERj4KPC94OnhtcG1ldGE+Cjw/eHBhY2tldCBlbmQ9InciPz4K/+0AfFBob3Rvc2hvcCAzLjAAOEJJTQQEAAAAAABfHAJQAA1Sb2NrZm9yZE1lZGlhHAJ4ADdPbGQgaHVtYW4gc2t1bGwgb24gdGhlIG9jZWFuIGZsb29yIGlzIGxpdCB1cCB3aXRoIHRvcmNoHAJuAAxHZXR0eSBJbWFnZXMA/9sAQwAICgoLCgsNDQ0NDQ0QDxAQEBAQEBAQEBAQEhISFRUVEhISEBASEhQUFRUXFxcVFRUVFxcZGRkeHhwcIyMkKysz/8QAhwAAAgMBAQEBAAAAAAAAAAAAAAIDBAUGBwgBAQEBAQEBAAAAAAAAAAAAAAAAAQIDEQEAAgIBAwIEBAYCAwEAAIAA8AAgMBAQBAECACATEgMBAwQHADRECCSMCSEgRBYRAEBAQADAREBAQEAwQDBAMASDDAMBISITMhQxQWEiBRaRwbHh8BESEQEBAQADAQADAAMBAQAAAAAAARESITFBUWEiBRNx8AP/9oADAMBAAIRAxEAPwD8/gAAAABQAAAAAAQAAFAAAUAAAQAAFZAABWQAAVABowGLUk7mI1kQUOKhwNTHIkTAYPrk3AVmqAV6+ZInoL1CwizH9yVtLBAnWfgOqlWQ0ucUcLPwLiTr5Mqx9KpKy9B6V8GQPG8vsWGoy1eCApu5Pok');
+    
+    var initCanvasSlideshow = new CanvasSlideshow({
+      sprites: spriteImagesSrc,
+      displacementImage: 'https://raw.githubusercontent.com/Pierrinho/elephant/master/pattern-clouds.jpg',
+      autoPlay: true,
+      autoPlaySpeed: [0, 6],
+      displaceAutoFit: false
+    });
+  </script>
+  
+  <script>
+    // Water droplet effect
+    console.clear();
+
+    class Drop {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.create();
+      }
+      
+      create() {
+        let dropEl = document.createElement('div');
+        dropEl.classList.add('drop');
+        dropEl.style.left = `${this.x}px`;
+        dropEl.style.top = `${this.y}px`;
+        document.body.appendChild(dropEl);
+        
+        // Remove the droplet after animation completes
+        setTimeout(() => {
+          dropEl.remove();
+        }, 4000);
+      }
+    }
+
+    const createDrop = e => {
+      let xPos = e.clientX,
+          yPos = e.clientY;
+      
+      let drop = new Drop(xPos, yPos);
+    }
+
+    document.addEventListener('click', createDrop);
+    
+    // Show corpse on click
+    document.body.addEventListener('click', function() {
+      const corpseContainer = document.getElementById('corpseContainer');
+      corpseContainer.classList.add('visible');
+    });
+  </script>
+</body>
+</html>
