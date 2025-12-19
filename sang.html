@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFP - Récits Horreur</title>
+    <!-- Chargement de Tailwind CSS pour un style moderne et responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Polices pour le thème Horreur -->
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nosifier&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Eater&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Butcherman&display=swap" rel="stylesheet">
+
+    <style>
+        /* Configuration générale des polices */
+        .font-horror {
+            font-family: 'Creepster', cursive;
+        }
+        .font-spooky-text {
+            font-family: 'Eater', cursive; 
+        }
+        .font-body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-tags {
+            font-family: 'Butcherman', cursive;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            background: black;
+        }
+        
+        #viewport-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            z-index: 200; /* Au-dessus par défaut */
+            /* Hide scrollbar */
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        
+        #tv-noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('tvnoise.gif');
+            background-size: 200%; /* Zoomer le gif pour remplir la page */
+            background-position: center center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000; /* Au-dessus du contenu du viewport */
+            transition: opacity 2s ease-in;
+            transform-origin: center center;
+        }
+        
+        #viewport-wrapper::-webkit-scrollbar {
+            display: none;  /* Chrome, Safari and Opera */
+        }
+        
+        #page-content {
+            position: relative;
+            min-height: 100vh;
+            z-index: 1;
+        }
+        
+        #story-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100; /* Derrière le viewport-wrapper (200) */
+            opacity: 0;
+            pointer-events: none;
+            /* Hide scrollbar */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        #story-container::-webkit-scrollbar {
+            display: none;
+        }
+        
+        #story-container.active {
+            pointer-events: auto;
+        }
+        
+        #blob-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: transparent; 
+            opacity: 1; 
+            pointer-events: none;
+            z-index: 100; 
+            overflow: hidden; 
+        }
+        
+        /* ---------------------------------------------------- */
+        /* --- Styles Anim-Araignee (Blob Zoom) --- */
+        /* ---------------------------------------------------- */
+        #blob-circle {
+            position: absolute;
+            width: 100px; 
+            height: 100px;
+            background-color: #000;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0.01); 
+            opacity: 1;
+            transition: transform 1.5s cubic-bezier(0.55, 0.085, 0.68, 0.53); 
+            overflow: hidden; 
+            z-index: 99; 
+            display: block; 
+        }
+
+        /* RESTAURATION DE L'ANIMATION ARAIGNÉE - VERSION IMAGE APNG */
+        .spider-runner {
+            position: absolute;
+            width: 80px; 
+            height: 80px;
+            z-index: 110; 
+            transition: transform ease-out, opacity ease-out; 
+            pointer-events: none; 
+            animation-duration: 0.5s; 
+            opacity: 1; 
+        }
+        
+        /* ---------------------------------------------------- */
+        /* --- Styles Anim-Sang-Coule (Blood Drip) --- */
+        /* ---------------------------------------------------- */
+        
+        #blood-flow-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            z-index: 95; 
+            display: none; 
+            background: transparent; 
+            filter: drop-shadow(0 0 10px var(--current-blood-color, rgba(159, 0, 0, 0.5))); 
+        }
+        
+        .blood-col {
+            height: 0; 
+            position: relative;
+            box-sizing: border-box;
+            margin: 0;
+            float: left;
+            background: var(--current-blood-color, #9f0000); 
+            box-shadow: 0 0 2px 1px var(--current-blood-color, #9f0000);
+            border-radius: 0 0 var(--border-radius-vmax, 3vmax) var(--border-radius-vmax, 3vmax);
+            margin-top: -2vmin;
+            animation-timing-function: cubic-bezier(0.34, 0.03, 0.76, 0.94);
+            animation-fill-mode: forwards;
+        }
+
+        .blood-col:before {
+            content: "";
+            background: var(--current-blood-color, #9f0000);
+            width: calc(100% + 0.2vmin);
+            height: var(--drop-size, 3vmax);
+            position: absolute;
+            bottom: -0.15vmin;
+            border-radius: var(--drop-radius, 0 100% 100% 100%);
+            left: -0.1vmin;
+            transform: rotate(var(--drop-rotation, 35deg));
+        }
+
+        .blood-col:after {
+            content: "";
+            width: var(--bubble-size, 2.25vmax);
+            height: var(--bubble-size, 2.25vmax);
+            position: absolute;
+            border-radius: 100%;
+            right: var(--bubble-right, 0.25vmax);
+            bottom: var(--bubble-bottom, 0.25vmax);
+            border: 0.25vmax solid #ffffff00;
+            border-bottom-color: #ffffff50;
+            transform: rotate(var(--bubble-rotation, -65deg));
+            filter: blur(1px) drop-shadow(0 0 5px #fff);
+            opacity: 0.5;
+        }
+
+        @keyframes drop {
+            0% { height: 0%; }
+            100% { height: calc(100% + 6vmax); } 
+        }
+
+        .blood-col.dropping {
+            animation-name: drop;
+        }
+        
+        .blood-col.final-color-black {
+            background: #000 !important;
+            box-shadow: none !important;
+        }
+        .blood-col.final-color-black:before {
+            background: #000 !important;
+        }
+        .blood-col.final-color-black:after {
+            opacity: 0 !important;
+        }
+        
+        /* ---------------------------------------------------- */
+        /* --- Styles Anim-Coffin-Open (Cercueil) --- */
+        /* ---------------------------------------------------- */
+        #coffin-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; 
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 110; 
+            opacity: 0; 
+            transition: opacity 0.3s ease-in-out; 
+        }
+
+        #coffin-img-wrapper {
+            width: 50vmin; 
+            height: 50vmin;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #coffin-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Le JS va gérer la transition du transform */
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) scale(1.5); }
+            10% { transform: translate(-5px, -3px) scale(1.5); }
+            20% { transform: translate(5px, 3px) scale(1.5); }
+            30% { transform: translate(-5px, -3px) scale(1.5); }
+            40% { transform: translate(5px, 3px) scale(1.5); }
+            50% { transform: translate(0, 0) scale(1.5); }
+        }
+        
+        .coffin-shaking {
+            animation: shake 0.5s ease-in-out; 
+        }
+
+
+        /* ---------------------------------------------------- */
+        /* --- Styles Contenu Histoire (Commun) --- */
+        /* ---------------------------------------------------- */
+        #story-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 40px 20px;
+            overflow-y: auto; 
+            opacity: 0;
+            transition: opacity 0.8s ease-in 0.3s; 
+            z-index: 105; 
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Style spécifique pour le titre cliquable */
+        .story-title-trigger {
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .story-title-trigger:hover {
+            color: #ef4444; /* red-500 */
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.7); 
+        }
+
+        /* ---------------------------------------------------- */
+        /* --- Styles Water Distortion Effect --- */
+        /* ---------------------------------------------------- */
+        @keyframes waterOpacityOscillate {
+            0%, 100% { opacity: 0.09; }
+            50% { opacity: 0.09; }
+        }
+
+        @keyframes waterBrightnessOscillate {
+            0%, 100% { filter: brightness(0.06); }
+            50% { filter: brightness(0.08); }
+        }
+
+        @keyframes waterDrift {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(2px, -2px); }
+            50% { transform: translate(-2px, -2px); }
+            75% { transform: translate(-2px, 2px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .water-wrapper-animate {
+            animation: waterOpacityOscillate 4s ease-in-out infinite;
+        }
+
+        .water-canvas-drift {
+            animation: waterDrift 8s ease-in-out infinite, waterBrightnessOscillate 4s ease-in-out infinite;
+        }
+
+        /* ---------------------------------------------------- */
+        /* --- TV Shutdown Effect --- */
+        /* ---------------------------------------------------- */
+        @keyframes tvShutdown {
+            0%        { transform: scaleY(1); }
+            40%       { transform: scaleY(1); }
+            50%       { transform: scaleY(0.02); filter: brightness(1.5); }
+            55%, 100% { transform: scaleY(0); filter: brightness(0); }
+        }
+
+        @keyframes tvStartup {
+            0%, 45%   { transform: scaleY(0); filter: brightness(0); }
+            50%       { transform: scaleY(0.02); filter: brightness(1.5); }
+            60%, 100% { transform: scaleY(1); filter: brightness(1); }
+        }
+
+        .tv-shutdown-active {
+            animation: tvShutdown 1.2s ease-out forwards;
+            transform-origin: center center;
+            pointer-events: none !important;
+        }
+
+        .tv-shutdown-active.hidden {
+            visibility: hidden;
+        }
+
+        .tv-startup-active {
+            animation: tvStartup 1.2s ease-out forwards;
+            transform-origin: center center;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+
+
+    </style>
+</head>
+
+<body>
+    <!-- Conteneur de l'histoire derrière le viewport -->
+    <div id="story-container" class="bg-gray-900 text-gray-200">
+        <div class="w-full max-w-4xl mx-auto">
+            <div class="max-w-3xl mx-auto py-8 px-4 sm:px-6"> 
+                
+                <!-- Flèche de retour -->
+                <button onclick="resetPage()" class="flex items-center text-lime-400 hover:text-red-500 transition duration-300 mb-6 font-bold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 mr-2">
+                        <path d="m12 19-7-7 7-7" />
+                        <path d="M19 12H5" />
+                    </svg>
+                    Retour aux Récits Glacés
+                </button>
+                
+                <h3 id="story-display-title" class="text-3xl font-horror text-red-500 mb-6 text-center"></h3>
+
+                <div id="story-content-placeholder" class="space-y-6 text-xl text-lime-300 leading-relaxed text-justify font-spooky-text">
+                    <!-- Le contenu sera injecté par JavaScript -->
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay de bruit TV en dehors du viewport pour rester fixe au viewport -->
+    <div id="tv-noise-overlay"></div>
+
+    <!-- Viewport wrapper pour centrer l'effet TV -->
+    <div id="viewport-wrapper">
+        <div id="page-content" class="font-body bg-gray-900 text-gray-200 min-h-screen flex flex-col items-center p-4 sm:p-8">
+
+            <!-- Overlay pour l'effet d'animation et pour contenir l'histoire -->
+            <div id="blob-overlay">
+                <!-- 1. Le blob pour l'animation araignée -->
+                <div id="blob-circle"></div>
+        
+        <!-- 3. Le conteneur d'animation du cercueil -->
+        <div id="coffin-animation">
+            <div id="coffin-img-wrapper" style="transform: scale(1.5);">
+                <img id="coffin-img" src="" alt=""/>
+            </div>
+        </div>
+        
+        <!-- 4. Le conteneur pour l'animation water distortion -->
+        <div id="water-distortion-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; opacity: 0; pointer-events: none; z-index: 105; background: transparent;">
+            <div id="water-black-bg" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 1;"></div>
+            <div id="js-canvas-wrapper" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; opacity: 0; z-index: 2;"></div>
+        </div>
+    </div>
+
+    <!-- Conteneur principal (La page d'accueil) -->
+    <main class="w-full max-w-6xl" id="main-content">
+
+        <!-- En-tête de la Page d'Accueil -->
+        <header class="text-center mb-10">
+            <div class="relative inline-block">
+                <canvas id="title-glitch-canvas" class="mx-auto" style="cursor: pointer;"></canvas>
+            </div>
+            <p class="text-xl sm:text-2xl font-semibold text-gray-400">
+                La Bibliothèque des Récits Glacés
+            </p>
+        </header>
+
+        <!-- Affiches des Récits (cliquables) -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <!-- Carte 1 : L'Effet Miroir (Animation Araignée/Blob) -->
+            <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl hover:shadow-red-700/50 transition duration-300 transform hover:scale-[1.03]">
+                <h2 class="text-3xl font-horror text-red-400 mb-2 border-b-2 border-red-500/50 pb-2 story-title-trigger" data-story-id="story1" data-animation="anim-araignee">
+                    L'Effet Miroir : Au Bord de l'Abîme
+                </h2>
+                <!-- Tags -->
+                <div class="flex flex-wrap gap-2 text-sm mb-4 text-red-300">
+                    <span class="font-tags bg-red-700/50 px-2 py-0.5 rounded-full">Paranormal</span>
+                    <span class="font-tags bg-red-700/50 px-2 py-0.5 rounded-full">Phobie</span>
+                    <span class="font-tags bg-red-700/50 px-2 py-0.5 rounded-full">Sursaut</span>
+                </div>
+                <!-- Image -->
+                <div class="relative w-full h-48 mb-4 rounded-lg overflow-hidden shadow-xl">
+                    <img src="https://placehold.co/1920x1080/000000/ff3333?text=Horreur+Psychologique" 
+                         alt="[Image d'arrière-plan du Récit Glacé 1]" 
+                         class="w-full h-full object-cover transition duration-500 hover:opacity-75">
+                    <span class="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        Animation Araignée
+                    </span>
+                </div>
+                <!-- Note de la Prod -->
+                <p id="prod-note-story1" class="text-red-400 text-sm italic mt-2"></p>
+            </div>
+
+            <!-- Carte 2 : La Maison Qui Respirait (Animation Sang Qui Coule) -->
+            <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl hover:shadow-lime-700/50 transition duration-300 transform hover:scale-[1.03]">
+                <h2 class="text-3xl font-horror text-lime-400 mb-2 border-b-2 border-lime-500/50 pb-2 story-title-trigger" data-story-id="story2" data-animation="anim-sang-coule">
+                    La Maison Qui Respirait
+                </h2>
+                <!-- Tags -->
+                <div class="flex flex-wrap gap-2 text-sm mb-4 text-lime-300">
+                    <span class="font-tags bg-lime-700/50 px-2 py-0.5 rounded-full">Gore</span>
+                    <span class="font-tags bg-lime-700/50 px-2 py-0.5 rounded-full">Body Horror</span>
+                    <span class="font-tags bg-lime-700/50 px-2 py-0.5 rounded-full">Progressif</span>
+                </div>
+                <!-- Image -->
+                <div class="relative w-full h-48 mb-4 rounded-lg overflow-hidden shadow-xl">
+                    <img src="https://placehold.co/1920x1080/000000/33ff33?text=Horreur+Organique" 
+                         alt="[Image d'arrière-plan du Récit Glacé 2]" 
+                         class="w-full h-full object-cover transition duration-500 hover:opacity-75">
+                    <span class="absolute top-3 right-3 bg-lime-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        Animation Sang
+                    </span>
+                </div>
+                <!-- Note de la Prod -->
+                <p id="prod-note-story2" class="text-lime-400 text-sm italic mt-2"></p>
+            </div>
+            
+            <!-- Carte 3 : L'Enregistrement (Animation Cercueil - NOUVELLE) -->
+            <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl hover:shadow-yellow-700/50 transition duration-300 transform hover:scale-[1.03]">
+                <h2 class="text-3xl font-horror text-yellow-400 mb-2 border-b-2 border-yellow-500/50 pb-2 story-title-trigger" data-story-id="story3" data-animation="anim-coffin-open">
+                    L'Enregistrement
+                </h2>
+                <!-- Tags -->
+                <div class="flex flex-wrap gap-2 text-sm mb-4 text-yellow-300">
+                    <span class="font-tags bg-yellow-700/50 px-2 py-0.5 rounded-full">Techno-Horreur</span>
+                    <span class="font-tags bg-yellow-700/50 px-2 py-0.5 rounded-full">Psychologique</span>
+                    <span class="font-tags bg-yellow-700/50 px-3 py-0.5 rounded-full">Moderne</span>
+                </div>
+                <!-- Image -->
+                <div class="relative w-full h-48 mb-4 rounded-lg overflow-hidden shadow-xl">
+                    <img src="https://placehold.co/1920x1080/000000/ffcc33?text=Cercueil+Ouvert" 
+                         alt="[Image d'arrière-plan du Récit Glacé 3]" 
+                         class="w-full h-full object-cover transition duration-500 hover:opacity-75">
+                    <span class="absolute top-3 right-3 bg-yellow-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        Animation Cercueil
+                    </span>
+                </div>
+                <!-- Note de la Prod -->
+                <p id="prod-note-story3" class="text-yellow-400 text-sm italic mt-2"></p>
+            </div>
+
+            <!-- Carte 4 : Le Glitch Numérique (Animation Glitch) -->
+            <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl hover:shadow-cyan-700/50 transition duration-300 transform hover:scale-[1.03]">
+                <h2 class="text-3xl font-horror text-cyan-400 mb-2 border-b-2 border-cyan-500/50 pb-2 story-title-trigger" data-story-id="story4" data-animation="anim-glitch">
+                    Le Glitch Numérique
+                </h2>
+                <!-- Tags -->
+                <div class="flex flex-wrap gap-2 text-sm mb-4 text-cyan-300">
+                    <span class="font-tags bg-cyan-700/50 px-2 py-0.5 rounded-full">Horreur Numérique</span>
+                    <span class="font-tags bg-cyan-700/50 px-2 py-0.5 rounded-full">Réalité Virtuelle</span>
+                    <span class="font-tags bg-cyan-700/50 px-3 py-0.5 rounded-full">Dérangement</span>
+                </div>
+                <!-- Image -->
+                <div class="relative w-full h-48 mb-4 rounded-lg overflow-hidden shadow-xl">
+                    <img src="https://placehold.co/1920x1080/000000/00ffff?text=Glitch+Code" 
+                         alt="[Image d'arrière-plan du Récit Glacé 4]" 
+                         class="w-full h-full object-cover transition duration-500 hover:opacity-75">
+                    <span class="absolute top-3 right-3 bg-cyan-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        Animation Glitch
+                    </span>
+                </div>
+                <!-- Note de la Prod -->
+                <p id="prod-note-story4" class="text-cyan-400 text-sm italic mt-2"></p>
+            </div>
+
+            <!-- Carte 5 : Les Profondeurs Oubliées (Animation Water Distortion) -->
+            <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl hover:shadow-blue-700/50 transition duration-300 transform hover:scale-[1.03]">
+                <h2 class="text-3xl font-horror text-blue-400 mb-2 border-b-2 border-blue-500/50 pb-2 story-title-trigger" data-story-id="story5" data-animation="anim-water-distortion">
+                    Les Profondeurs Oubliées
+                </h2>
+                <!-- Tags -->
+                <div class="flex flex-wrap gap-2 text-sm mb-4 text-blue-300">
+                    <span class="font-tags bg-blue-700/50 px-2 py-0.5 rounded-full">Aquatique</span>
+                    <span class="font-tags bg-blue-700/50 px-2 py-0.5 rounded-full">Corps Oubliés</span>
+                    <span class="font-tags bg-blue-700/50 px-3 py-0.5 rounded-full">Profondeurs</span>
+                </div>
+                <!-- Image -->
+                <div class="relative w-full h-48 mb-4 rounded-lg overflow-hidden shadow-xl">
+                    <img src="https://placehold.co/1920x1080/001a33/0066cc?text=Underwater+Bodies" 
+                         alt="[Image d'arrière-plan du Récit Glacé 5]" 
+                         class="w-full h-full object-cover transition duration-500 hover:opacity-75">
+                    <span class="absolute top-3 right-3 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        Animation Eau
+                    </span>
+                </div>
+                <!-- Note de la Prod -->
+                <p id="prod-note-story5" class="text-blue-400 text-sm italic mt-2"></p>
+            </div>
+
+        </section>
+        
+        <p class="text-center text-gray-400 text-lg italic mt-8">
+            Cliquez sur un récit pour voir différentes façons d'ouvrir le rideau...
+        </p>
+
+    </main>
+
+    <!-- PIXI.js pour l'animation water distortion -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.8.2/pixi.min.js"></script>
+
+    <script>
+        // --- DONNÉES DES HISTOIRES ET CONFIGURATIONS ---
+        const STORIES = [
+             {
+                id: 'story1',
+                title: "L'Effet Miroir : Au Bord de l'Abîme",
+                animation: "anim-araignee",
+                prodNote: "Attention : Ce récit est conçu pour vous faire sursauter.",
+                content: `<p>L’air était une gelée de peur. La lampe torche de Sarah, un faible faisceau jaune dans la pénombre visqueuse, s’accrochait désespérément aux marches brisées de l’escalier. Chaque bruit de pas était une déflagration, chaque craquement du bois, un claquement de mâchoires. Elle n'était plus l'enquêtrice sceptique. Elle était la proie.</p><p>Derrière elle, le palier. Et sur ce palier, l’horreur prenait forme. Quatre silhouettes brumeuses, comme des traces de pas dans la fumée, se matérialisaient. Elles n'avaient pas de visage précis, juste des cavités sombres, mais dans la chambre d'enfant ouverte, le point d'orgue de cette symphonie macabre brillait. Les yeux de la petite fille fantôme, ceux qu'elle n'avait vus que dans les pires légendes, étaient deux charbons ardents, deux phares rouges braqués sur sa panique.</p><p>Sarah ne courait pas pour sa vie ; elle fuyait une capture. Elle sentait l'étreinte invisible se resserrer autour d'elle, le froid des âmes éteintes s’infiltrer dans sa propre chaleur. Les fantômes n'avaient pas besoin de la toucher pour la glacer. Leurs murmures, une cacophonie de regrets et de supplications étouffées, ne parlaient pas de la mort, mais de l'oubli. Ils ne voulaient pas sa vie, mais son souvenir, sa place dans le monde des vivants.</p><p>Un son perça le chœur des damnés : un rire. Un rire cristallin, aigu, celui d'une enfant. C'était la poupée maudite, ou l'esprit qui la contrôlait, qui se délectait de son désarroi. Le rire était l'invitation finale à l'abysse. Chaque marche qu'elle dévalait était un pas de plus vers la liberté, mais aussi un pas dans le mythe. Elle avait voulu prouver que les légendes étaient fausses. La légende lui prouvait maintenant qu'elle était très, très réelle.</p><p>Elle se jeta hors de la maison, le bruit de la porte claquant derrière elle comme un coup de fusil. La forêt était sa seule alliée. Elle ne se souvenait pas de la course, seulement de la nécessité de s'éloigner de ces yeux rouges, de ce rire qui n'appartenait pas à une enfant, mais à quelque chose de beaucoup plus ancien et de beaucoup plus cruel. Elle avait survécu à la maison Blackwood. Mais la maison, elle, allait l'habiter pour toujours.</p>`
+            },
+            {
+                id: 'story2',
+                title: "La Maison Qui Respirait",
+                animation: "anim-sang-coule",
+                prodNote: "mdrrr spooky😁",
+                content: `<p>La maison n’était pas abandonnée. Elle était immobile. C’est ce que Luc a pensé la première nuit. Pas de craquements habituels, pas de vent dans les murs. Un silence trop épais, presque humide. Comme si le bâtiment retenait son souffle.</p><p>Il avait acheté cette vieille maison à la campagne pour presque rien. Le notaire avait évité son regard en lui tendant les clés. — « Personne n’y est resté longtemps », avait-il simplement dit.</p><p>La première semaine s’est bien passée. Trop bien. Luc dormait profondément. Pas de rêves. Pas de cauchemars. Juste un noir total, comme une coupure.</p><p>Puis, un soir, en s’endormant, il a senti le matelas s’enfoncer très lentement, comme si quelqu’un s’asseyait à côté de lui.</p><p>Il n’a pas bougé.</p><p>Le silence était absolu. Au matin, la trace était toujours là.</p><p>Les nuits suivantes, Luc a commencé à entendre un bruit discret. Régulier. Un souffle. Pas le sien. Le bruit venait des murs. Un va-et-vient lent, profond. Comme une respiration gigantesque, étouffée par la pierre.</p><p>Il a vérifié la chaudière. Rien. Les tuyaux. Rien.</p><p>Une nuit, incapable de dormir, il a posé sa main contre le mur du couloir.</p><p>La surface était tiède.</p><p>Et sous sa paume, quelque chose a bougé. Luc a retiré sa main en sursaut. Le mur a semblé se contracter, comme une peau vexée.</p><p>Le lendemain, il a voulu partir.</p><p>La porte d’entrée ne s’ouvrait plus. Les fenêtres non plus. Son téléphone n’avait plus de réseau.</p><p>La respiration s’est faite plus forte.</p><p>La maison ne se contentait plus de respirer : elle attendait.</p><p>Les murs ont commencé à se rapprocher imperceptiblement, nuit après nuit. Le plafond semblait plus bas. Les couloirs plus étroits.</p><p>Et chaque matin, Luc se réveillait épuisé, avec l’impression d’avoir été tenu toute la nuit.</p><p>La dernière nuit, il s’est réveillé incapable de bouger.</p><p>Le lit s’est enfoncé. Lentement. Profondément.</p><p>Les murs ont expiré à l’unisson.</p><p>Un souffle chaud lui a caressé le visage.</p><p>Une voix, partout à la fois, a murmuré : — « Tu es enfin à ta place. »</p><p>Quand les voisins ont senti une odeur étrange des semaines plus tard, la maison était toujours là.</p><p>Silencieuse.</p><p>Immobile. Et repue.</p>`
+            },
+            {
+                id: 'story3',
+                title: "L'Enregistrement",
+                animation: "anim-coffin-open",
+                prodNote: "Une histoire pour les insomniaques.",
+                content: `<p>L’enregistrement était daté de la veille. C’était impossible, puisque Camille reconnaissait sa propre voix… et qu’elle se souvenait très bien ne rien avoir enregistré.</p><p>Elle a appuyé sur “lecture”. Au début, il n’y avait que du souffle.</p><p>Puis sa voix, basse, tendue : — « Si tu entends ça… n’éteins surtout pas la lumière. »</p><p>Camille a ri nerveusement. Elle vivait seule. Elle n’était pas somnambule.</p><p>Elle allait arrêter quand sa voix a repris : — « Il apprend vite. »</p><p>Un frisson lui a parcouru l’échine. La pièce était exactement comme sur l’enregistrement. Même bourdonnement du néon. Même tic-tac de l’horloge.</p><p>Sauf qu’elle n’avait aucun souvenir de cette conversation.</p><p>L’enregistrement continuait : — « Il ne bouge que quand tu ne le regardes pas. »</p><p>Elle a mis l’enregistrement en pause.</p><p>Le silence est devenu pesant, comme si l’appartement avait changé de texture.</p><p>Un bruit derrière elle. Très léger. Comme un pas retenu.</p><p>Elle s’est retournée brusquement. Toujours rien.</p><p>Camille a repris la lecture, les mains tremblantes.</p><p>— « J’ai essayé de partir. Il a fermé la porte. »</p><p>— « Il imite parfaitement. »</p><p>À ce moment précis, son téléphone a vibré.</p><p>Un message. Expéditeur : Camille. « Ne te retourne pas. »</p><p>L’enregistrement s’est mis à grésiller, puis sa voix a chuchoté : — « Il est derrière toi maintenant. »</p><p>Camille a senti un souffle froid effleurer sa nuque.</p><p>Une respiration qui n’était pas la sienne.</p><p>La lumière a clignoté.</p><p>L’enregistrement s’est arrêté net.</p><p>Le lendemain, le téléphone de Camille était posé sur la table, écran éteint.</p><p>Un nouvel enregistrement avait été créé pendant la nuit.</p><p>Il commençait par un long silence.</p><p>Puis une voix, parfaitement calme, disait : — « Elle apprend lentement. Mais elle apprend. »</p>`
+            },
+            {
+                id: 'story4',
+                title: "Le Glitch Numérique",
+                animation: "anim-glitch",
+                prodNote: "Attention : cet univers n'est pas stable.",
+                content: `<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor.</p><p>Cras elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod non, mi.</p><p>Proin porttitor, orci nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque vitae, consequat in, pretium a, enim.</p><p>Pellentesque congue. Ut in risus volutpat libero pharetra tempor. Cras vestibulum bibendum augue. Praesent egestas leo in pede.</p><p>Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Aliquam nibh.</p><p>Mauris ac mauris sed pede pellentesque fermentum. Maecenas adipiscing ante non diam sodales hendrerit.</p><p>Ut velit mauris, egestas sed, gravida nec, ornare ut, mi. Aenean ut orci vel massa suscipit pulvinar. Nulla sollicitudin.</p><p>Fusce varius, ligula non tempus aliquam, nunc turpis ullamcorper nibh, in tempus sapien eros vitae ligula. Pellentesque rhoncus nunc et augue.</p><p>Integer id felis. Curabitur aliquet pellentesque diam. Integer quis metus vitae elit lobortis egestas.</p><p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Morbi vel erat non mauris convallis vehicula.</p>`
+            },
+            {
+                id: 'story5',
+                title: "Les Profondeurs Oubliées",
+                animation: "anim-water-distortion",
+                prodNote: "Plongez dans les abysses...",
+                content: `<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p><p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.</p><p>Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.</p><p>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.</p><p>Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur.</p><p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.</p><p>Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.</p><p>Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus.</p>`
+            }
+        ];
+        
+        // --- ÉLÉMENTS DU DOM et CONSTANTES ---
+        let storyTitleTriggers;
+        const mainContent = document.getElementById('main-content');
+        const blobOverlay = document.getElementById('blob-overlay');
+        const blobCircle = document.getElementById('blob-circle');
+        const storyContainer = document.getElementById('story-container');
+        const storyDisplayTitle = document.getElementById('story-display-title');
+        const storyContentPlaceholder = document.getElementById('story-content-placeholder');
+        
+        // Constantes Araignée (RÉTABLIES À LA VERSION PRÉCÉDENTE)
+        const BLOB_ANIMATION_DURATION = 1500; 
+        const SPIDER_COUNT = 280; 
+        const SPIDER_DELAY_MS = 4; 
+        const SPIDER_ANIMATION_DURATION = 3846; // 30% plus rapide (5000 / 1.3) 
+        const SPIDER_SIZE = 80; // Taille de l'image araignée
+        const SPIDER_IMAGE_SRC = 'spider2.apng'; // Source locale
+
+        // Constantes Sang
+        const BLOOD_COLOR_TRANSITION_DURATION = 1500; 
+        const START_COLOR = '#9f0000'; 
+        const END_COLOR = '#000000'; 
+        const COLUMN_COUNT_MIN = 20;
+        const COLUMN_COUNT_MAX = 40;
+        const BASE_DROP_DURATION = 2.0; 
+        const DURATION_VARIANCE_PERCENT = 0.5; 
+        const MAX_INITIAL_DELAY = 0.6; 
+        const WIDTH_VARIANCE_PERCENT = 0.1; 
+        let bloodFlowContainer; 
+        
+        // Constantes Cercueil (Images locales restaurées)
+        const COFFIN_IMG_ID = 'coffin-img';
+        const COFFIN_IMG_WRAPPER_ID = 'coffin-img-wrapper';
+
+        // URLs d'images (fichiers locaux)
+        const COFFIN_STATIC_SRC = "coffin2static.png"; 
+        const COFFIN_APNG_SRC = "coffin.apng"; 
+        const COFFIN_FALLBACK_SRC = "coffin2staticend.png";
+        
+        const COFFIN_PAUSE_MS = 400; 
+        const COFFIN_SHAKE_DURATION = 500; 
+        const COFFIN_APNG_WAIT_MS = 1100; // La durée d'attente demandée pour l'APNG (1 seconde 1 dixième)
+        const COFFIN_ZOOM_DURATION = 1000;
+        
+        // Durée totale de la séquence d'événements (pour le setTimeout final)
+        const COFFIN_TOTAL_ANIM_TIME = 
+            50 + // Fade In initial
+            COFFIN_SHAKE_DURATION + COFFIN_PAUSE_MS + // Secousse 1 + Pause 1
+            COFFIN_SHAKE_DURATION + COFFIN_PAUSE_MS + // Secousse 2 + Pause 2
+            COFFIN_APNG_WAIT_MS + // Attente APNG (1100ms)
+            COFFIN_PAUSE_MS + // Pause 3 (après le changement d'image)
+            COFFIN_ZOOM_DURATION + // Zoom
+            500; // Marge de fin (Total ~4850ms)
+
+        // Constantes Glitch Effect
+        const GLITCH_DURATION = 3000; // Durée de l'effet glitch avant de montrer l'histoire
+
+
+        /**
+         * Affiche de manière aléatoire la note de production pour les cartes.
+         */
+        function displayProdNotes() {
+            STORIES.forEach(story => {
+                const noteElement = document.getElementById(`prod-note-${story.id}`);
+                if (noteElement) {
+                    // 70% de chance d'afficher la note
+                    if (Math.random() < 0.7) { 
+                        noteElement.innerHTML = `<span class="opacity-75">Note de la Prod : </span>${story.prodNote}`;
+                    } else {
+                        noteElement.textContent = '';
+                    }
+                }
+            });
+        }
+
+        // --- Fonctions utilitaires de couleur pour le Sang ---
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [
+                parseInt(result[1], 16),
+                parseInt(result[2], 16),
+                parseInt(result[3], 16)
+            ] : [0, 0, 0];
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
+        }
+        
+        function colorTransition(startHex, endHex, duration) {
+            return new Promise(resolve => {
+                const startTime = performance.now();
+                const startRgb = hexToRgb(startHex);
+                const endRgb = hexToRgb(endHex);
+                const root = document.documentElement;
+                
+                function updateColor(timestamp) {
+                    const elapsed = timestamp - startTime;
+                    const progress = Math.min(1, elapsed / duration);
+
+                    const r = Math.round(startRgb[0] + (endRgb[0] - startRgb[0]) * progress);
+                    const g = Math.round(startRgb[1] + (endRgb[1] - startRgb[1]) * progress);
+                    const b = Math.round(startRgb[2] + (endRgb[2] - startRgb[2]) * progress);
+                    
+                    const currentColorHex = rgbToHex(r, g, b);
+
+                    root.style.setProperty('--current-blood-color', currentColorHex);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(updateColor);
+                    } else {
+                        root.style.setProperty('--current-blood-color', END_COLOR);
+                        // Forcer le noir final
+                        bloodFlowContainer.querySelectorAll('.blood-col').forEach(col => {
+                            col.classList.add('final-color-black');
+                        });
+                        resolve();
+                    }
+                }
+
+                requestAnimationFrame(updateColor);
+            });
+        }
+        
+        // --- Fonctions d'animation Araignée (RÉTABLIE) et Sang ---
+
+        function calculateScaleFactor(x, y) {
+            const maxX = Math.max(x, window.innerWidth - x);
+            const maxY = Math.max(y, window.innerHeight - y);
+            const maxDistance = Math.sqrt(maxX * maxX + maxY * maxY);
+            const targetSize = maxDistance * 2; 
+            const initialSize = 100; 
+            return targetSize / initialSize;
+        }
+
+        /**
+         * Crée et lance une araignée (image APNG) en mouvement. (RÉTABLIE)
+         */
+        function createAndRunSpider(startX, startY, index) {
+            const spider = document.createElement('img'); 
+            spider.src = SPIDER_IMAGE_SRC;
+            spider.alt = "[Image d'une araignée animée s'enfuyant]";
+            spider.classList.add('spider-runner', 'active-spider');
+            
+            // Vitesse aléatoire pour chaque araignée (entre 60% et 140% de la durée de base - doublé)
+            const speedVariation = 0.6 + Math.random() * 0.8;
+            const spiderDuration = SPIDER_ANIMATION_DURATION * speedVariation;
+            spider.style.transition = `left ${spiderDuration}ms ease-out, top ${spiderDuration}ms ease-out, opacity 300ms ease-out`;
+
+            const OCTANT_SIZE = 45; 
+            const sectorIndex = index % 8; 
+            const baseAngle = sectorIndex * OCTANT_SIZE; 
+            const angleDeg = baseAngle + (Math.random() * OCTANT_SIZE); 
+            const distance = Math.max(window.innerWidth, window.innerHeight) * 1.5; 
+            
+            const deltaX = distance * Math.cos(angleDeg * Math.PI / 180);
+            const deltaY = distance * Math.sin(angleDeg * Math.PI / 180);
+
+            const rotationRad = Math.atan2(deltaY, deltaX);
+            const rotationDeg = rotationRad * (180 / Math.PI) - 90 + 180; 
+
+            // Taille aléatoire pour varier les araignées (entre 0.5x et 1.3x)
+            const randomScale = 0.5 + Math.random() * 0.8;
+            // Réduire la taille à 40% sur mobile
+            const isMobile = window.innerWidth <= 768;
+            const sizeMultiplier = isMobile ? 0.4 : 1;
+            const finalSize = SPIDER_SIZE * randomScale * sizeMultiplier;
+            spider.style.width = `${finalSize}px`;
+            spider.style.height = `${finalSize}px`;
+
+            const centerOffset = finalSize / 2; 
+            const initialX = startX - centerOffset; 
+            const initialY = startY - centerOffset;
+            
+            const finalX = initialX + deltaX;
+            const finalY = initialY + deltaY;
+
+            // Configurer TOUS les styles AVANT d'ajouter au DOM pour éviter l'empilement
+            spider.style.position = 'absolute';
+            spider.style.left = `${initialX}px`;
+            spider.style.top = `${initialY}px`;
+            spider.style.transform = `rotate(${rotationDeg}deg)`;
+            spider.style.opacity = 0; // Commence invisible
+            spider.style.visibility = 'hidden'; // Caché jusqu'à ce que tout soit prêt
+
+            // Ajouter au DOM seulement après avoir tout configuré
+            blobOverlay.appendChild(spider);
+
+            requestAnimationFrame(() => {
+                // Rendre visible d'abord
+                spider.style.visibility = 'visible';
+                
+                // Déclenchement de l'animation
+                setTimeout(() => {
+                    // Rendre visible immédiatement
+                    spider.style.opacity = 1;
+                    // Lancer le déplacement avec left/top + rotation
+                    spider.style.left = `${finalX}px`;
+                    spider.style.top = `${finalY}px`;
+                    spider.style.transform = `rotate(${rotationDeg}deg)`;
+                    
+                    // Disparaît vers la fin du mouvement
+                    setTimeout(() => {
+                        spider.style.opacity = 0;
+                    }, spiderDuration * 0.7);
+                }, 50);
+
+                setTimeout(() => {
+                    spider.remove();
+                }, spiderDuration + 100);
+            });
+        }
+
+        function createBloodFlowStructure() {
+            if (!bloodFlowContainer) {
+                bloodFlowContainer = document.createElement('div');
+                bloodFlowContainer.id = 'blood-flow-container';
+                blobOverlay.appendChild(bloodFlowContainer);
+            } else {
+                bloodFlowContainer.innerHTML = '';
+            }
+            
+            document.documentElement.style.setProperty('--current-blood-color', START_COLOR);
+
+            const randomColumnCount = Math.floor(Math.random() * (COLUMN_COUNT_MAX - COLUMN_COUNT_MIN + 1)) + COLUMN_COUNT_MIN;
+            const targetAvgWidthPercent = 100 / randomColumnCount;
+            let maxDuration = 0; 
+
+            for (let i = 0; i < randomColumnCount; i++) {
+                const col = document.createElement('div');
+                col.classList.add('blood-col');
+                
+                const widthVariance = targetAvgWidthPercent * WIDTH_VARIANCE_PERCENT; 
+                const randomWidth = targetAvgWidthPercent + (Math.random() * widthVariance * 2) - widthVariance; 
+                
+                const randomDelay = Math.random() * MAX_INITIAL_DELAY; 
+                const durationRange = BASE_DROP_DURATION * DURATION_VARIANCE_PERCENT; 
+                const randomDuration = BASE_DROP_DURATION + (Math.random() * durationRange * 2) - durationRange; 
+                
+                if (randomDelay + randomDuration > maxDuration) {
+                    maxDuration = randomDelay + randomDuration;
+                }
+                
+                col.style.width = `${randomWidth}%`; 
+                col.setAttribute('data-drop-delay', randomDelay.toFixed(2));
+                col.setAttribute('data-drop-duration', randomDuration.toFixed(2));
+
+                const dropSizeVmax = (2.5 + Math.random() * 2.5).toFixed(2); 
+                const dropRotation = (10 + Math.random() * 50).toFixed(0); 
+                
+                const radiusTopLeft = Math.floor(Math.random() * 50); 
+                const radiusTopRight = 100 - radiusTopLeft; 
+                
+                const bubbleSizeVmax = (1.5 + Math.random() * 1.5).toFixed(2); 
+                const bubbleRotation = (-90 + Math.random() * 60).toFixed(0); 
+
+                col.style.setProperty('--drop-size', `${dropSizeVmax}vmax`);
+                col.style.setProperty('--drop-rotation', `${dropRotation}deg`);
+                col.style.setProperty('--drop-radius', `${radiusTopLeft}% ${radiusTopRight}% 100% 100%`);
+                col.style.setProperty('--border-radius-vmax', `${(parseFloat(dropSizeVmax) * 0.7).toFixed(2)}vmax`); 
+                col.style.setProperty('--bubble-size', `${bubbleSizeVmax}vmax`);
+                col.style.setProperty('--bubble-rotation', `${bubbleRotation}deg`);
+                col.style.setProperty('--bubble-right', `${(Math.random() * 1.5).toFixed(2)}vmax`);
+                col.style.setProperty('--bubble-bottom', `${(Math.random() * 1.5).toFixed(2)}vmax`);
+                
+                bloodFlowContainer.appendChild(col);
+            }
+            return maxDuration * 1000;
+        }
+        
+        function triggerBloodFlow() {
+            const maxDropTimeMs = createBloodFlowStructure(); 
+            
+            blobCircle.style.opacity = 0;
+            blobCircle.style.transform = 'translate(-50%, -50%) scale(0.01)'; 
+            
+            bloodFlowContainer.style.display = 'flex'; 
+
+            const columns = bloodFlowContainer.querySelectorAll('.blood-col');
+            columns.forEach(col => {
+                const delay = parseFloat(col.getAttribute('data-drop-delay'));
+                const duration = parseFloat(col.getAttribute('data-drop-duration'));
+                
+                col.style.animationDelay = `${delay}s`;
+                col.style.animationDuration = `${duration}s`;
+                
+                requestAnimationFrame(() => col.classList.add('dropping'));
+            });
+
+            const timeToStartColorTransition = maxDropTimeMs + 100; 
+            
+            setTimeout(() => {
+                colorTransition(START_COLOR, END_COLOR, BLOOD_COLOR_TRANSITION_DURATION);
+            }, timeToStartColorTransition);
+
+            return timeToStartColorTransition + BLOOD_COLOR_TRANSITION_DURATION;
+        }
+        
+        /**
+         * Lance la séquence de zoom lent.
+         */
+        function startSlowZoom(coffinWrapper, coffinAnim, zoomStartDelay) {
+            const COFFIN_MAX_ZOOM = 80;
+
+            setTimeout(() => {
+                // 1. Appliquer la transition LENTE (1000ms)
+                coffinWrapper.style.transition = `transform ${COFFIN_ZOOM_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`; 
+                // Définir l'origine de transformation pour zoomer 15% plus haut que le centre
+                coffinWrapper.style.transformOrigin = 'center 35%';
+
+                // 2. Déclenchement du zoom LENT
+                coffinWrapper.style.transform = `scale(${COFFIN_MAX_ZOOM})`; 
+                
+                // 3. Reporter le Fondu de l'overlay (300ms après la fin du zoom pour s'assurer que l'effet est visible)
+                const totalVisibleZoomTime = COFFIN_ZOOM_DURATION + 300; 
+                coffinAnim.style.transition = `opacity 500ms ease-out ${totalVisibleZoomTime}ms`; 
+                coffinAnim.style.opacity = 0;
+                
+            }, zoomStartDelay);
+        }
+
+        /**
+         * Déclenche l'animation du cercueil (coffin-open) en respectant la séquence stricte.
+         */
+        function triggerCoffinOpen() {
+            const coffinAnim = document.getElementById('coffin-animation');
+            const coffinImg = document.getElementById(COFFIN_IMG_ID);
+            const coffinWrapper = document.getElementById(COFFIN_IMG_WRAPPER_ID);
+            
+            // --- 0. Nettoyage et Initialisation ---
+            coffinAnim.style.display = 'flex';
+            coffinWrapper.classList.remove('coffin-shaking');
+            coffinWrapper.style.transition = ''; 
+            coffinWrapper.style.transform = 'scale(1.5)'; 
+            coffinAnim.style.opacity = 0;
+            coffinAnim.style.removeProperty('transition');
+
+            // Set Initial Image (COFFIN_STATIC_SRC)
+            coffinImg.src = COFFIN_STATIC_SRC; 
+
+            let currentTime = 50; 
+            
+            // --- 1. Fade in (50ms) ---
+            setTimeout(() => {
+                coffinAnim.style.opacity = 1;
+            }, currentTime); 
+            currentTime += 50; 
+            
+            // --- 2. Secousse 1 (500ms) + Pause 1 (400ms) ---
+            setTimeout(() => {
+                coffinWrapper.classList.add('coffin-shaking');
+            }, currentTime);
+            currentTime += COFFIN_SHAKE_DURATION;
+            
+            setTimeout(() => {
+                coffinWrapper.classList.remove('coffin-shaking');
+            }, currentTime);
+            currentTime += COFFIN_PAUSE_MS; 
+            
+            // --- 3. Secousse 2 (500ms) + Pause 2 (400ms) ---
+            setTimeout(() => {
+                coffinWrapper.offsetWidth; // Force le reflow
+                coffinWrapper.classList.add('coffin-shaking');
+            }, currentTime);
+            currentTime += COFFIN_SHAKE_DURATION;
+
+            setTimeout(() => {
+                coffinWrapper.classList.remove('coffin-shaking');
+            }, currentTime);
+            currentTime += COFFIN_PAUSE_MS;
+            
+            // --- 4. Changement vers APNG (Instantané) + Attente 1100ms ---
+            setTimeout(() => {
+                coffinImg.src = COFFIN_APNG_SRC; // Charge l'image APNG (simulée)
+            }, currentTime);
+            currentTime += COFFIN_APNG_WAIT_MS; // Attente 1100ms pour l'animation APNG
+            
+            // --- 5. Changement vers Fallback (Instantané) + Pause 3 (400ms) ---
+            setTimeout(() => {
+                coffinImg.src = COFFIN_FALLBACK_SRC; // Change vers l'image finale
+            }, currentTime);
+            currentTime += COFFIN_PAUSE_MS;
+
+            // --- 6. Zoom LENT (1000ms) ---
+            const zoomStartDelay = currentTime; 
+            startSlowZoom(coffinWrapper, coffinAnim, zoomStartDelay);
+            currentTime += COFFIN_ZOOM_DURATION;
+            
+            // --- 7. Retour de la durée totale
+            return COFFIN_TOTAL_ANIM_TIME;
+        }
+
+        /**
+         * Déclenche l'effet TV shutdown sur le viewport avec bruit TV.
+         */
+        function triggerGlitch() {
+            const viewportWrapper = document.getElementById('viewport-wrapper');
+            const tvNoise = document.getElementById('tv-noise-overlay');
+            
+            console.log('=== TRIGGER GLITCH START ===');
+            console.log('tvNoise initial state:', {
+                opacity: getComputedStyle(tvNoise).opacity,
+                visibility: getComputedStyle(tvNoise).visibility,
+                transform: getComputedStyle(tvNoise).transform,
+                transition: getComputedStyle(tvNoise).transition
+            });
+            
+            // 1. Faire apparaître le bruit TV progressivement (2s de fondu) - max 80%
+            tvNoise.style.opacity = '0.5';
+            console.log('tvNoise opacity set to 0.9');
+            
+            // 2. Attendre 2s (fondu) + 0.5s (affichage) = 2.5s avant le shutdown
+            setTimeout(() => {
+                console.log('=== BEFORE TV SHUTDOWN ===');
+                console.log('tvNoise before shutdown:', {
+                    opacity: getComputedStyle(tvNoise).opacity,
+                    visibility: getComputedStyle(tvNoise).visibility,
+                    classList: tvNoise.classList.toString()
+                });
+                
+                // Appliquer l'effet TV shutdown sur le viewport ET le gif de bruit
+                viewportWrapper.classList.add('tv-shutdown-active');
+                tvNoise.classList.add('tv-shutdown-active');
+                
+                console.log('=== AFTER TV SHUTDOWN CLASS ADDED ===');
+                console.log('tvNoise after shutdown class:', {
+                    opacity: getComputedStyle(tvNoise).opacity,
+                    transform: getComputedStyle(tvNoise).transform,
+                    classList: tvNoise.classList.toString()
+                });
+                
+                // 3. Après le shutdown (1.2s), cacher complètement et désactiver totalement
+                setTimeout(() => {
+                    viewportWrapper.classList.add('hidden');
+                    viewportWrapper.style.zIndex = '50'; // Sous le story-container (100)
+                    viewportWrapper.style.pointerEvents = 'none'; // Désactiver complètement les interactions
+                    viewportWrapper.style.visibility = 'hidden'; // Cacher complètement
+                    
+                    // Cacher aussi le gif
+                    tvNoise.style.visibility = 'hidden';
+                }, 1200);
+            }, 2500);
+            
+            return 2500 + 1200; // Total: 3.7s
+        }
+
+        // Variable globale pour stocker le canvas pré-rendu
+        let waterCanvasReady = false;
+
+        /**
+         * Force le canvas à être visible en premier plan
+         */
+        function bringCanvasToFront() {
+            const waterOverlay = document.getElementById('water-distortion-overlay');
+            const blackBg = document.getElementById('water-black-bg');
+            const canvasWrapper = document.getElementById('js-canvas-wrapper');
+            const canvas = canvasWrapper ? canvasWrapper.querySelector('canvas') : null;
+            
+            console.log('=== BRINGING CANVAS TO FRONT ===');
+            console.log('waterOverlay:', waterOverlay);
+            console.log('blackBg:', blackBg);
+            console.log('canvasWrapper:', canvasWrapper);
+            console.log('canvas:', canvas);
+            
+            if (waterOverlay) {
+                waterOverlay.style.transition = 'none';
+                waterOverlay.style.opacity = '1';
+                waterOverlay.style.zIndex = '200';
+                waterOverlay.style.pointerEvents = 'none';
+                console.log('Overlay set: opacity=1, zIndex=200');
+            }
+            
+            if (blackBg) {
+                blackBg.style.zIndex = '1';
+                console.log('Black BG zIndex set to 1');
+            }
+            
+            if (canvasWrapper) {
+                canvasWrapper.style.transition = 'none'; // REMOVE TRANSITION FIRST
+                canvasWrapper.style.opacity = '1';
+                canvasWrapper.style.zIndex = '300';
+                canvasWrapper.style.visibility = 'visible';
+                canvasWrapper.style.display = 'block';
+                canvasWrapper.classList.add('water-wrapper-animate');
+                console.log('Canvas wrapper set: opacity=1, zIndex=300, visible, transition removed');
+            }
+            
+            if (canvas) {
+                canvas.style.opacity = '1';
+                canvas.style.visibility = 'visible';
+                canvas.style.display = 'block';
+                canvas.style.zIndex = '400';
+                canvas.style.position = 'relative';
+                canvas.classList.add('water-canvas-drift');
+                console.log('Canvas element set: opacity=1, zIndex=400, visible');
+                console.log('Canvas final computed style:', {
+                    display: getComputedStyle(canvas).display,
+                    visibility: getComputedStyle(canvas).visibility,
+                    opacity: getComputedStyle(canvas).opacity,
+                    zIndex: getComputedStyle(canvas).zIndex,
+                    width: canvas.width,
+                    height: canvas.height
+                });
+            } else {
+                console.error('Canvas element not found!');
+            }
+        }
+
+        /**
+         * Déclenche l'effet de distorsion sous l'eau avec PIXI.js
+         */
+        function triggerWaterDistortion() {
+            const waterOverlay = document.getElementById('water-distortion-overlay');
+            const canvasWrapper = document.getElementById('js-canvas-wrapper');
+            
+            console.log('triggerWaterDistortion called, canvas ready:', waterCanvasReady);
+            
+            // 1. Show overlay black background immediately
+            waterOverlay.style.transition = 'none';
+            waterOverlay.style.opacity = '1';
+            waterOverlay.style.zIndex = '105';
+            waterOverlay.style.backgroundColor = 'transparent';
+            
+            // 2. Fade in canvas with opacity oscillation
+            canvasWrapper.style.transition = 'opacity 2s ease-in-out';
+            canvasWrapper.style.backgroundColor = 'transparent';
+            canvasWrapper.style.zIndex = '106';
+            
+            setTimeout(() => {
+                canvasWrapper.style.opacity = '0.2';
+                canvasWrapper.classList.add('water-wrapper-animate');
+                console.log('Canvas fading in with opacity oscillation');
+            }, 100);
+            
+            // Retourner le délai total avant d'afficher l'histoire (4s)
+            return 4000;
+        }
+
+        // PIXI.js CanvasSlideshow class for water distortion effect
+        class CanvasSlideshow {
+            constructor(options) {
+                this.images = options.images || [];
+                this.displacementImage = options.displacementImage || '';
+                this.parent = options.parent || document.body;
+                this.autoPlay = options.autoPlay !== undefined ? options.autoPlay : true;
+                this.autoPlaySpeed = options.autoPlaySpeed || [10, 3];
+                this.displaceScale = options.displaceScale || [200, 70];
+                this.fullScreen = options.fullScreen !== undefined ? options.fullScreen : false;
+                this.centerSprites = options.centerSprites !== undefined ? options.centerSprites : false;
+                
+                this.init();
+            }
+            
+            init() {
+                console.log('CanvasSlideshow init started');
+                console.log('Window dimensions:', window.innerWidth, 'x', window.innerHeight);
+                
+                const renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, {
+                    transparent: true
+                });
+                console.log('Renderer created:', renderer);
+                
+                // NO DEBUG COLORS - clean canvas
+                renderer.view.style.position = 'absolute';
+                renderer.view.style.top = '0';
+                renderer.view.style.left = '0';
+                renderer.view.style.width = '100%';
+                renderer.view.style.height = '100%';
+                
+                this.parent.appendChild(renderer.view);
+                console.log('Canvas appended to parent');
+                
+                const stage = new PIXI.Container();
+                const slidesContainer = new PIXI.Container();
+                
+                // Load and setup main image
+                const image = PIXI.Sprite.from(this.images[0]);
+                image.anchor.set(0.5);
+                image.x = renderer.width / 2;
+                image.y = renderer.height / 2;
+                
+                console.log('Image sprite created at center:', image.x, image.y);
+                
+                // Calculate scale when image loads
+                const onImageLoad = () => {
+                    if (image.texture.width > 0 && image.texture.height > 0) {
+                        const scale = Math.max(renderer.width / image.texture.width, renderer.height / image.texture.height) * 2;
+                        image.scale.set(scale);
+                        console.log('Image loaded and scaled to:', scale, 'dimensions:', image.texture.width, 'x', image.texture.height);
+                        renderer.render(stage);
+                    }
+                };
+                
+                if (image.texture.baseTexture.hasLoaded) {
+                    onImageLoad();
+                } else {
+                    image.texture.baseTexture.on('loaded', onImageLoad);
+                }
+                
+                slidesContainer.addChild(image);
+                stage.addChild(slidesContainer);
+                
+                // Add displacement filter
+                const displacementSprite = PIXI.Sprite.from(this.displacementImage);
+                displacementSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+                
+                const displacementFilter = new PIXI.filters.DisplacementFilter(displacementSprite);
+                displacementFilter.scale.x = this.displaceScale[0];
+                displacementFilter.scale.y = this.displaceScale[1];
+                
+                slidesContainer.filters = [displacementFilter];
+                stage.addChild(displacementSprite);
+                
+                console.log('Displacement filter setup complete');
+                
+                // Initial render
+                renderer.render(stage);
+                
+                // Animation loop
+                if (this.autoPlay) {
+                    PIXI.ticker.shared.add(() => {
+                        displacementSprite.x += this.autoPlaySpeed[0];
+                        displacementSprite.y += this.autoPlaySpeed[1];
+                        renderer.render(stage);
+                    });
+                    console.log('Animation loop started');
+                }
+            }
+        }
+
+        /**
+         * Déclenche l'animation et affiche l'histoire dans l'overlay.
+         */
+        function startBlobTransition(e) {
+            const targetElement = e.currentTarget;
+            const storyId = targetElement.getAttribute('data-story-id');
+            const animationType = targetElement.getAttribute('data-animation');
+            const selectedStory = STORIES.find(s => s.id === storyId);
+
+            if (!selectedStory) {
+                console.error("Story not found for ID:", storyId);
+                return;
+            }
+
+            // Récupérer les coordonnées du clic seulement pour l'animation araignée
+            let clientX = window.innerWidth / 2;
+            let clientY = window.innerHeight / 2;
+            if (e.clientX && e.clientY) {
+                clientX = e.clientX; 
+                clientY = e.clientY;
+            }
+
+            let storyDisplayDelay = 0;
+
+            // 1. Chargement du contenu de l'histoire
+            storyDisplayTitle.textContent = selectedStory.title;
+            storyContentPlaceholder.innerHTML = selectedStory.content;
+
+            // 2. Setup commun
+            storyTitleTriggers.forEach(el => el.style.pointerEvents = 'none');
+            blobOverlay.style.zIndex = '100'; 
+            blobOverlay.style.pointerEvents = 'auto';
+            
+            // Empêcher tout fondu du contenu principal dès le début
+            mainContent.style.transition = 'none';
+            mainContent.style.opacity = 1;
+            
+            // 3. Logique spécifique à l'animation
+            if (animationType === 'anim-araignee') {
+                blobOverlay.style.backgroundColor = 'transparent';
+                
+                // --- ANIMATION ARAIGNÉE (BLOB) ---
+                const scaleFactor = calculateScaleFactor(clientX, clientY);
+                blobCircle.style.opacity = 0; // Commence transparent
+                blobCircle.style.left = `${clientX}px`;
+                blobCircle.style.top = `${clientY}px`;
+                storyDisplayDelay = BLOB_ANIMATION_DURATION;
+                
+                requestAnimationFrame(() => {
+                    blobCircle.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
+                    // Monter progressivement l'opacité pendant l'animation
+                    setTimeout(() => {
+                        blobCircle.style.transition = 'opacity 800ms ease-in';
+                        blobCircle.style.opacity = 1;
+                    }, BLOB_ANIMATION_DURATION * 0.4); // Commence à 40% de l'animation
+                });
+
+                for (let i = 0; i < SPIDER_COUNT; i++) {
+                    setTimeout(() => {
+                        const slightShiftX = (Math.random() - 0.5) * 30; 
+                        const slightShiftY = (Math.random() - 0.5) * 30;
+                        createAndRunSpider(clientX + slightShiftX, clientY + slightShiftY, i);
+                    }, i * SPIDER_DELAY_MS); 
+                }
+
+            } else if (animationType === 'anim-sang-coule') {
+                // --- ANIMATION SANG COULE (avec transition de couleur) ---
+                storyDisplayDelay = triggerBloodFlow(); 
+                
+            } else if (animationType === 'anim-coffin-open') {
+                // --- ANIMATION CERCEUIL (COFFIN) ---
+                storyDisplayDelay = triggerCoffinOpen();
+            } else if (animationType === 'anim-glitch') {
+                // --- ANIMATION GLITCH ---
+                // Afficher le texte immédiatement derrière avec z-index bas
+                storyContainer.style.zIndex = '100'; // Derrière le viewport
+                storyContainer.style.opacity = 1;
+                storyContainer.classList.add('active');
+                storyContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                // Garder mainContent visible (opacity 1) pendant l'effet TV
+                mainContent.style.opacity = 1;
+                
+                storyDisplayDelay = triggerGlitch();
+            } else if (animationType === 'anim-water-distortion') {
+                // --- ANIMATION WATER DISTORTION ---
+                storyDisplayDelay = triggerWaterDistortion();
+            } else {
+                storyDisplayDelay = 500; 
+            }
+
+            // 4. Afficher le texte de l'histoire (Commun)
+            setTimeout(() => {
+                // Pour le glitch, le texte est déjà affiché
+                if (animationType !== 'anim-glitch') {
+                    storyContainer.style.zIndex = '300'; // Au-dessus du viewport pour les autres animations
+                    storyContainer.style.opacity = 1; 
+                    storyContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                    mainContent.style.opacity = 0;
+                }
+
+                if (bloodFlowContainer) {
+                    const columns = bloodFlowContainer.querySelectorAll('.blood-col');
+                    columns.forEach(col => col.classList.remove('dropping'));
+                    bloodFlowContainer.style.display = 'none';
+                }
+                
+                const coffinAnim = document.getElementById('coffin-animation');
+                if (coffinAnim) {
+                    coffinAnim.style.opacity = 0;
+                    coffinAnim.style.display = 'none';
+                }
+
+                // Cacher l'animation water distortion
+                const waterOverlay = document.getElementById('water-distortion-overlay');
+                if (waterOverlay) {
+                    waterOverlay.style.opacity = 0;
+                }
+
+            }, storyDisplayDelay);
+        }
+
+        /**
+         * Réinitialise la page en inversant l'effet.
+         */
+        function resetPage() {
+            const viewportWrapper = document.getElementById('viewport-wrapper');
+            
+            // Si on revient du glitch (vérifié par la classe active sur storyContainer)
+            const wasGlitch = storyContainer.classList.contains('active');
+            
+            // 1. Fondu du texte de l'histoire
+            storyContainer.style.opacity = 0;
+            
+            // Appliquer TV startup sur viewport si on revient du glitch
+            if (wasGlitch) {
+                const tvNoise = document.getElementById('tv-noise-overlay');
+                
+                console.log('=== RESET PAGE - GLITCH MODE ===');
+                
+                // Restaurer z-index, visibility et pointer-events avant l'animation
+                viewportWrapper.style.zIndex = '200';
+                viewportWrapper.style.visibility = 'visible';
+                viewportWrapper.style.pointerEvents = 'auto';
+                viewportWrapper.classList.remove('hidden', 'tv-shutdown-active');
+                viewportWrapper.classList.add('tv-startup-active');
+                
+                // Réinitialiser complètement le gif pour la réutilisation
+                tvNoise.classList.remove('tv-shutdown-active');
+                tvNoise.style.transition = 'none'; // Pas de transition pour le reset
+                tvNoise.style.opacity = '0'; // Garder invisible
+                tvNoise.style.visibility = 'hidden'; // Cacher immédiatement
+                tvNoise.style.removeProperty('transform'); // Retirer le transform
+                
+                // Restaurer la transition après un court délai pour la prochaine utilisation
+                setTimeout(() => {
+                    tvNoise.style.visibility = 'visible';
+                    tvNoise.style.transition = 'opacity 2s ease-in';
+                }, 100);
+                
+                console.log('tvNoise reset for reuse:', {
+                    opacity: getComputedStyle(tvNoise).opacity,
+                    visibility: getComputedStyle(tvNoise).visibility,
+                    transform: getComputedStyle(tvNoise).transform
+                });
+                
+                setTimeout(() => {
+                    viewportWrapper.classList.remove('tv-startup-active');
+                }, 1200);
+            } 
+            
+            // 2. Nettoyage et affichage de l'accueil
+            setTimeout(() => {
+                // Reset Anim Araignée
+                document.querySelectorAll('.active-spider').forEach(spider => spider.remove());
+                blobCircle.style.transform = 'translate(-50%, -50%) scale(0.01)'; 
+                
+                // Reset Anim Sang
+                if (bloodFlowContainer) {
+                    bloodFlowContainer.innerHTML = ''; 
+                    bloodFlowContainer.style.display = 'none';
+                    document.documentElement.style.removeProperty('--current-blood-color');
+                }
+
+                // Reset Anim Cercueil
+                const coffinAnim = document.getElementById('coffin-animation');
+                const coffinWrapper = document.getElementById(COFFIN_IMG_WRAPPER_ID);
+
+                if (coffinAnim) {
+                    coffinAnim.style.opacity = 0;
+                    coffinAnim.style.display = 'none';
+                    coffinAnim.style.removeProperty('transition'); 
+                }
+                if (coffinWrapper) {
+                    coffinWrapper.classList.remove('coffin-shaking');
+                    coffinWrapper.style.transform = 'scale(1.5)'; // Reset à la taille initiale dans le wrapper
+                    coffinWrapper.style.transition = ''; 
+                }
+
+                // Nettoyer les classes TV effect et active, et réinitialiser z-index
+                storyContainer.classList.remove('tv-shutdown-active', 'tv-startup-active', 'active');
+                storyContainer.style.zIndex = '100'; // Remettre derrière par défaut
+
+                // Reset Anim Water Distortion
+                const waterOverlay = document.getElementById('water-distortion-overlay');
+                const canvasWrapper = document.getElementById('js-canvas-wrapper');
+                if (waterOverlay) {
+                    waterOverlay.style.opacity = '0';
+                    waterOverlay.style.zIndex = '105';
+                    waterOverlay.style.backgroundColor = 'transparent';
+                }
+                if (canvasWrapper) {
+                    // DON'T clear innerHTML - just hide it
+                    canvasWrapper.style.opacity = '0';
+                    canvasWrapper.style.zIndex = '2';
+                    canvasWrapper.style.backgroundColor = 'transparent';
+                }
+                
+                // Reset de l'overlay et de la page d'accueil
+                blobOverlay.style.backgroundColor = 'transparent';
+                blobOverlay.style.zIndex = '50';
+                blobOverlay.style.pointerEvents = 'none';
+                storyTitleTriggers.forEach(el => el.style.pointerEvents = 'auto');
+                
+                displayProdNotes();
+                // Réinitialiser mainContent sans transition
+                mainContent.style.transition = 'none';
+                mainContent.style.opacity = 1; // Rendre la page d'accueil visible
+            }, 800); 
+        }
+
+        // --- ÉVÉNEMENTS ---
+        
+        window.addEventListener('DOMContentLoaded', () => {
+             // Crée le conteneur #blood-flow-container au chargement
+            if (!bloodFlowContainer) {
+                bloodFlowContainer = document.createElement('div');
+                bloodFlowContainer.id = 'blood-flow-container';
+                blobOverlay.appendChild(bloodFlowContainer);
+            }
+            
+            // Initialiser le canvas PIXI pour l'animation water au chargement
+            const canvasWrapper = document.getElementById('js-canvas-wrapper');
+            console.log('Canvas wrapper element:', canvasWrapper);
+            console.log('Canvas wrapper display:', getComputedStyle(canvasWrapper).display);
+            console.log('Canvas wrapper opacity:', getComputedStyle(canvasWrapper).opacity);
+            console.log('Canvas wrapper visibility:', getComputedStyle(canvasWrapper).visibility);
+            
+            if (typeof PIXI !== 'undefined') {
+                console.log('Pre-rendering PIXI water canvas...');
+                const images = ['https://raw.githubusercontent.com/ovalletTheSecond/mfng/updated/skull_underwater.jpg'];
+                const displacementImage = 'https://raw.githubusercontent.com/Pierrinho/elephant/master/pattern-clouds.jpg';
+                
+                try {
+                    const canvasSlideshow = new CanvasSlideshow({
+                        images: images,
+                        displacementImage: displacementImage,
+                        parent: canvasWrapper,
+                        autoPlay: true,
+                        autoPlaySpeed: [0, 3],
+                        displaceScale: [5, 5],
+                        fullScreen: true,
+                        centerSprites: true
+                    });
+                    console.log('CanvasSlideshow instance created:', canvasSlideshow);
+                    
+                    // Mark canvas as ready after a short delay
+                    setTimeout(() => {
+                        const canvas = canvasWrapper.querySelector('canvas');
+                        if (canvas) {
+                            waterCanvasReady = true;
+                            console.log('PIXI water canvas ready');
+                        }
+                    }, 1000);
+                } catch(e) {
+                    console.error('Error pre-rendering water canvas:', e);
+                    console.error('Error stack:', e.stack);
+                }
+            } else {
+                console.error('PIXI is not defined at page load!');
+            }
+            
+            // Afficher les notes de la prod au chargement de la page
+            displayProdNotes();
+            
+            // Sélectionner tous les titres cliquables (important: après le DOM)
+            storyTitleTriggers = document.querySelectorAll('.story-title-trigger');
+            
+            // Attacher l'événement à tous les titres cliquables
+            storyTitleTriggers.forEach(trigger => {
+                trigger.addEventListener('click', startBlobTransition);
+            });
+            
+            // Initialiser l'effet glitch sur le titre MFP
+            initTitleGlitch();
+        });
+        
+        /**
+         * Initialise l'effet glitch sur le titre MFP
+         */
+        function initTitleGlitch() {
+            const titleCanvas = document.getElementById('title-glitch-canvas');
+            if (!titleCanvas) return;
+            
+            const ctx = titleCanvas.getContext('2d');
+            titleCanvas.width = 400;
+            titleCanvas.height = 120;
+            
+            let mouseActive = false;
+            
+            // Attendre que la police soit chargée
+            document.fonts.ready.then(() => {
+                // Créer un canvas temporaire pour dessiner le texte avec la police
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = 400;
+                tempCanvas.height = 120;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Dessiner le texte avec la police Creepster
+                tempCtx.fillStyle = 'transparent';
+                tempCtx.fillRect(0, 0, 400, 120);
+                tempCtx.font = '80px Creepster, cursive';
+                tempCtx.fillStyle = '#ef4444';
+                tempCtx.textAlign = 'center';
+                tempCtx.textBaseline = 'middle';
+                tempCtx.letterSpacing = '0.1em';
+                tempCtx.fillText('MFP', 200, 60);
+                
+                // Créer une image à partir du canvas temporaire
+                const img = new Image();
+                img.onload = function() {
+                    const w = img.width;
+                    const h = img.height;
+                    
+                    function runGlitch() {
+                        ctx.clearRect(0, 0, titleCanvas.width, titleCanvas.height);
+                        const inc = mouseActive ? 0.35 : 0.18;
+                        const a = 20;
+                        
+                        for (let j = 0; j < h; j++) {
+                            const dx = Math.floor(inc * (Math.random() - 0.5) * a);
+                            ctx.drawImage(img, 0, j, w, 1, dx, j, w, 1);
+                        }
+                        
+                        requestAnimationFrame(runGlitch);
+                    }
+                    
+                    runGlitch();
+                };
+                
+                img.src = tempCanvas.toDataURL();
+            });
+            
+            titleCanvas.addEventListener('mouseover', () => { mouseActive = true; });
+            titleCanvas.addEventListener('mouseout', () => { mouseActive = false; });
+            titleCanvas.addEventListener('touchstart', () => { mouseActive = true; });
+            titleCanvas.addEventListener('touchend', () => { mouseActive = false; });
+        }
+
+    </script>
+
+        </div>
+        <!-- Fin du page-content -->
+    </div>
+    <!-- Fin du viewport-wrapper -->
+
+</body>
+</html>

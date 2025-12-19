@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFP</title>
+    <!-- Chargement de Tailwind CSS pour un style moderne et responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Configuration générale des polices */
+        @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;700;900&family=Nosifier&display=swap'); 
+
+        /* Styles de la police Creepster pour les TITRES - ambiance horreur */
+        .font-horror {
+            font-family: 'Creepster', cursive;
+        }
+        
+        /* Nouvelle police pour le CORPS DU TEXTE DE L'HISTOIRE - style métal/spooky */
+        .font-spooky-text {
+            font-family: 'Nosifier', cursive; /* Nouvelle police effrayante */
+        }
+
+        /* Styles de la police Inter pour le corps du texte (reste en arrière-plan) */
+        .font-body {
+            font-family: 'Inter', 'Inter', sans-serif;
+        }
+
+        /* BODY par défaut : z-index bas pour être recouvert par le BLOB si nécessaire */
+        body {
+            position: relative; 
+            z-index: 1; 
+        }
+        
+        /* Conteneur du BLOB d'animation (maintenant le conteneur du récit) */
+        #blob-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: transparent; 
+            opacity: 1; 
+            pointer-events: none;
+            z-index: 50; 
+            /* Empêche le scroll du body pendant l'animation */
+            overflow-y: hidden; 
+        }
+        
+        /* Le cercle noir qui va grandir (Le "Blob") */
+        #blob-circle {
+            position: absolute;
+            width: 100px; 
+            height: 100px;
+            background-color: #000;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0.01); 
+            opacity: 1;
+            /* Transition du zoom (1.5s) */
+            transition: transform 1.5s cubic-bezier(0.55, 0.085, 0.68, 0.53); 
+            overflow: hidden; 
+            z-index: 99; 
+        }
+
+        /* Conteneur du contenu de l'histoire, qui va apparaître par-dessus le blob zoomé */
+        #story-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 40px 20px;
+            overflow-y: auto; /* Permet de scroller l'histoire */
+            opacity: 0;
+            transition: opacity 0.8s ease-in 0.3s; 
+            z-index: 105; 
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Style pour l'araignée animée qui s'enfuit */
+        .spider-runner {
+            position: absolute;
+            width: 80px; 
+            height: 80px;
+            z-index: 110; 
+            transition: transform ease-out, opacity ease-out; 
+            pointer-events: none; 
+            left: 0px; 
+            top: 0px;
+            animation-duration: 0.5s; 
+        }
+
+        /* Style spécifique pour le titre cliquable */
+        .story-title-trigger {
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .story-title-trigger:hover {
+            color: #ef4444; /* red-500 */
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.7); /* Petit effet de lueur */
+        }
+    </style>
+</head>
+
+<body class="font-body bg-gray-900 text-gray-200 min-h-screen flex flex-col items-center p-4 sm:p-8">
+
+    <!-- Overlay pour l'effet de blob et pour contenir l'histoire -->
+    <div id="blob-overlay">
+        <!-- Le blob est l'élément qui zoome pour devenir l'écran noir -->
+        <div id="blob-circle"></div>
+
+        <!-- Conteneur du contenu de l'histoire, visible lorsque le blob a terminé son zoom -->
+        <div id="story-container" class="w-full max-w-4xl mx-auto">
+            <!-- Wrapper pour le padding et le centrage du contenu de l'histoire sur l'écran noir -->
+            <div class="max-w-3xl mx-auto py-8 px-4 sm:px-6"> 
+                
+                <!-- Flèche de retour -->
+                <button onclick="resetPage()" class="flex items-center text-lime-400 hover:text-red-500 transition duration-300 mb-6 font-bold">
+                    <!-- Flèche SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 mr-2">
+                        <path d="m12 19-7-7 7-7" />
+                        <path d="M19 12H5" />
+                    </svg>
+                    Retour aux Récits Glacés
+                </button>
+                
+                <!-- Le titre de l'histoire sélectionnée sera affiché ici -->
+                <h3 id="story-display-title" class="text-3xl font-horror text-red-500 mb-6 text-center"></h3>
+
+                <!-- Contenu de l'histoire : Vert Électrique avec la nouvelle police spooky -->
+                <div id="story-content-placeholder" class="space-y-6 text-xl text-lime-300 leading-relaxed text-justify font-spooky-text">
+                    <!-- Le contenu sera injecté par JavaScript -->
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteneur principal (La page d'accueil) -->
+    <main class="w-full max-w-6xl" id="main-content">
+
+        <!-- En-tête de la Page d'Accueil -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl sm:text-6xl font-horror text-red-500 mb-2 tracking-wider">
+                MFP
+            </h1>
+            <p class="text-xl sm:text-2xl font-semibold text-gray-400">
+                La Bibliothèque des Récits Glacés
+            </p>
+        </header>
+
+        <!-- Affiches des Récits (cliquables) -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <!-- Carte 1 : L'Effet Miroir -->
+            <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl hover:shadow-red-700/50 transition duration-300 transform hover:scale-[1.03]">
+                <h2 class="text-3xl font-horror text-red-400 mb-4 border-b-2 border-red-500/50 pb-2 story-title-trigger" data-story-id="story1">
+                    L'Effet Miroir : Au Bord de l'Abîme
+                </h2>
+                <div class="relative w-full h-48 mb-4 rounded-lg overflow-hidden shadow-xl">
+                    <img src="https://placehold.co/1920x1080/000000/ff3333?text=RÉCIT+1" 
+                         alt="[Image d'arrière-plan du Récit Glacé 1]" 
+                         class="w-full h-full object-cover transition duration-500 hover:opacity-75">
+                    <span class="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        Récit Glacé
+                    </span>
+                </div>
+            </div>
+
+            <!-- Carte 2 : La Maison Qui Respirait -->
+            <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl hover:shadow-lime-700/50 transition duration-300 transform hover:scale-[1.03]">
+                <h2 class="text-3xl font-horror text-lime-400 mb-4 border-b-2 border-lime-500/50 pb-2 story-title-trigger" data-story-id="story2">
+                    La Maison Qui Respirait
+                </h2>
+                <div class="relative w-full h-48 mb-4 rounded-lg overflow-hidden shadow-xl">
+                    <img src="https://placehold.co/1920x1080/000000/33ff33?text=RÉCIT+2" 
+                         alt="[Image d'arrière-plan du Récit Glacé 2]" 
+                         class="w-full h-full object-cover transition duration-500 hover:opacity-75">
+                    <span class="absolute top-3 right-3 bg-lime-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        Tension Progressive
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Carte 3 : L'Enregistrement -->
+            <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl hover:shadow-yellow-700/50 transition duration-300 transform hover:scale-[1.03]">
+                <h2 class="text-3xl font-horror text-yellow-400 mb-4 border-b-2 border-yellow-500/50 pb-2 story-title-trigger" data-story-id="story3">
+                    L'Enregistrement
+                </h2>
+                <div class="relative w-full h-48 mb-4 rounded-lg overflow-hidden shadow-xl">
+                    <img src="https://placehold.co/1920x1080/000000/ffcc33?text=RÉCIT+3" 
+                         alt="[Image d'arrière-plan du Récit Glacé 3]" 
+                         class="w-full h-full object-cover transition duration-500 hover:opacity-75">
+                    <span class="absolute top-3 right-3 bg-yellow-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        Paranormal Moderne
+                    </span>
+                </div>
+            </div>
+
+        </section>
+        
+        <p class="text-center text-gray-400 text-lg italic mt-8">
+            Cliquez sur le titre d'un récit pour commencer la lecture... et peut-être relâcher quelques araignées.
+        </p>
+
+    </main>
+
+    <script>
+        // --- DONNÉES DES HISTOIRES (CONTENU ET MÉTADONNÉES) ---
+        const STORIES = [
+            {
+                id: 'story1',
+                title: "L'Effet Miroir : Au Bord de l'Abîme",
+                tag: 'Récit Glacé',
+                content: `
+                    <p>L’air était une gelée de peur. La lampe torche de Sarah, un faible faisceau jaune dans la pénombre visqueuse, s’accrochait désespérément aux marches brisées de l’escalier. Chaque bruit de pas était une déflagration, chaque craquement du bois, un claquement de mâchoires. Elle n'était plus l'enquêtrice sceptique. Elle était la proie.</p>
+                    <p>Derrière elle, le palier. Et sur ce palier, l’horreur prenait forme. Quatre silhouettes brumeuses, comme des traces de pas dans la fumée, se matérialisaient. Elles n'avaient pas de visage précis, juste des cavités sombres, mais dans la chambre d'enfant ouverte, le point d'orgue de cette symphonie macabre brillait. Les yeux de la petite fille fantôme, ceux qu'elle n'avait vus que dans les pires légendes, étaient deux charbons ardents, deux phares rouges braqués sur sa panique.</p>
+                    <p>Sarah ne courait pas pour sa vie ; elle fuyait une capture. Elle sentait l'étreinte invisible se resserrer autour d'elle, le froid des âmes éteintes s'infiltrer dans sa propre chaleur. Les fantômes n'avaient pas besoin de la toucher pour la glacer. Leurs murmures, une cacophonie de regrets et de supplications étouffées, ne parlaient pas de la mort, mais de l'oubli. Ils ne voulaient pas sa vie, mais son souvenir, sa place dans le monde des vivants.</p>
+                    <p>Un son perça le chœur des damnés : un rire. Un rire cristallin, aigu, celui d'une enfant. C'était la poupée maudite, ou l'esprit qui la contrôlait, qui se délectait de son désarroi. Le rire était l'invitation finale à l'abysse. Chaque marche qu'elle dévalait était un pas de plus vers la liberté, mais aussi un pas dans le mythe. Elle avait voulu prouver que les légendes étaient fausses. La légende lui prouvait maintenant qu'elle était très, très réelle.</p>
+                    <p>Elle se jeta hors de la maison, le bruit de la porte claquant derrière elle comme un coup de fusil. La forêt était sa seule alliée. Elle ne se souvenait pas de la course, seulement de la nécessité de s'éloigner de ces yeux rouges, de ce rire qui n'appartenait pas à une enfant, mais à quelque chose de beaucoup plus ancien et de beaucoup plus cruel. Elle avait survécu à la maison Blackwood. Mais la maison, elle, allait l'habiter pour toujours.</p>
+                `
+            },
+            {
+                id: 'story2',
+                title: "La Maison Qui Respirait",
+                tag: 'Tension Progressive',
+                content: `
+                    <p>La maison n’était pas abandonnée. Elle était immobile. C’est ce que Luc a pensé la première nuit. Pas de craquements habituels, pas de vent dans les murs. Un silence trop épais, presque humide. Comme si le bâtiment retenait son souffle.</p>
+                    <p>Il avait acheté cette vieille maison à la campagne pour presque rien. Le notaire avait évité son regard en lui tendant les clés. — « Personne n’y est resté longtemps », avait-il simplement dit.</p>
+                    <p>La première semaine s’est bien passée. Trop bien. Luc dormait profondément. Pas de rêves. Pas de cauchemars. Juste un noir total, comme une coupure.</p>
+                    <p>Puis, un soir, en s’endormant, il a senti le matelas s’enfoncer très lentement, comme si quelqu’un s’asseyait à côté de lui.</p>
+                    <p>Il n’a pas bougé.</p>
+                    <p>Le silence était absolu. Au matin, la trace était toujours là.</p>
+                    <p>Les nuits suivantes, Luc a commencé à entendre un bruit discret. Régulier. Un souffle. Pas le sien. Le bruit venait des murs. Un va-et-vient lent, profond. Comme une respiration gigantesque, étouffée par la pierre.</p>
+                    <p>Il a vérifié la chaudière. Rien. Les tuyaux. Rien.</p>
+                    <p>Une nuit, incapable de dormir, il a posé sa main contre le mur du couloir.</p>
+                    <p>La surface était tiède.</p>
+                    <p>Et sous sa paume, quelque chose a bougé. Luc a retiré sa main en sursaut. Le mur a semblé se contracter, comme une peau vexée.</p>
+                    <p>Le lendemain, il a voulu partir.</p>
+                    <p>La porte d’entrée ne s’ouvrait plus. Les fenêtres non plus. Son téléphone n’avait plus de réseau.</p>
+                    <p>La respiration s’est faite plus forte.</p>
+                    <p>La maison ne se contentait plus de respirer : elle attendait.</p>
+                    <p>Les murs ont commencé à se rapprocher imperceptiblement, nuit après nuit. Le plafond semblait plus bas. Les couloirs plus étroits.</p>
+                    <p>Et chaque matin, Luc se réveillait épuisé, avec l’impression d’avoir été tenu toute la nuit.</p>
+                    <p>La dernière nuit, il s’est réveillé incapable de bouger.</p>
+                    <p>Le lit s’est enfoncé. Lentement. Profondément.</p>
+                    <p>Les murs ont expiré à l’unisson.</p>
+                    <p>Un souffle chaud lui a caressé le visage.</p>
+                    <p>Une voix, partout à la fois, a murmuré : — « Tu es enfin à ta place. »</p>
+                    <p>Quand les voisins ont senti une odeur étrange des semaines plus tard, la maison était toujours là.</p>
+                    <p>Silencieuse.</p>
+                    <p>Immobile. Et repue.</p>
+                `
+            },
+            {
+                id: 'story3',
+                title: "L'Enregistrement",
+                tag: 'Paranormal Moderne',
+                content: `
+                    <p>L’enregistrement était daté de la veille. C’était impossible, puisque Camille reconnaissait sa propre voix… et qu’elle se souvenait très bien ne rien avoir enregistré.</p>
+                    <p>Elle a appuyé sur “lecture”. Au début, il n’y avait que du souffle.</p>
+                    <p>Puis sa voix, basse, tendue : — « Si tu entends ça… n’éteins surtout pas la lumière. »</p>
+                    <p>Camille a ri nerveusement. Elle vivait seule. Elle n’était pas somnambule.</p>
+                    <p>Elle allait arrêter quand sa voix a repris : — « Il apprend vite. »</p>
+                    <p>Un frisson lui a parcouru l’échine. La pièce était exactement comme sur l’enregistrement. Même bourdonnement du néon. Même tic-tac de l’horloge.</p>
+                    <p>Sauf qu’elle n’avait aucun souvenir de cette conversation.</p>
+                    <p>L’enregistrement continuait : — « Il ne bouge que quand tu ne le regardes pas. »</p>
+                    <p>Camille a senti son cœur battre plus fort. Elle a balayé l’appartement du regard.</p>
+                    <p>Rien. Absolument rien.</p>
+                    <p>— « Ne cligne pas des yeux trop longtemps. »</p>
+                    <p>Elle a mis l’enregistrement en pause.</p>
+                    <p>Le silence est devenu pesant, comme si l’appartement avait changé de texture.</p>
+                    <p>Un bruit derrière elle. Très léger. Comme un pas retenu.</p>
+                    <p>Elle s’est retournée brusquement. Toujours rien.</p>
+                    <p>Camille a repris la lecture, les mains tremblantes.</p>
+                    <p>— « J’ai essayé de partir. Il a fermé la porte. »</p>
+                    <p>— « Il imite parfaitement. »</p>
+                    <p>À ce moment précis, son téléphone a vibré.</p>
+                    <p>Un message. Expéditeur : Camille. « Ne te retourne pas. »</p>
+                    <p>L’enregistrement s’est mis à grésiller, puis sa voix a chuchoté : — « Il est derrière toi maintenant. »</p>
+                    <p>Camille a senti un souffle froid effleurer sa nuque.</p>
+                    <p>Une respiration qui n’était pas la sienne.</p>
+                    <p>La lumière a clignoté.</p>
+                    <p>L’enregistrement s’est arrêté net.</p>
+                    <p>Le lendemain, le téléphone de Camille était posé sur la table, écran éteint.</p>
+                    <p>Un nouvel enregistrement avait été créé pendant la nuit.</p>
+                    <p>Il commençait par un long silence.</p>
+                    <p>Puis une voix, parfaitement calme, disait : — « Elle apprend lentement. Mais elle apprend. »</p>
+                `
+            }
+        ];
+        
+        // --- ÉLÉMENTS DU DOM ---
+        const storyTitleTriggers = document.querySelectorAll('.story-title-trigger');
+        const blobOverlay = document.getElementById('blob-overlay');
+        const blobCircle = document.getElementById('blob-circle');
+        const storyContainer = document.getElementById('story-container');
+        const storyDisplayTitle = document.getElementById('story-display-title');
+        const storyContentPlaceholder = document.getElementById('story-content-placeholder');
+        
+        // --- CONSTANTES D'ANIMATION ---
+        const BLOB_ANIMATION_DURATION = 1500; // 1.5 secondes pour le zoom du blob
+        const SPIDER_COUNT = 45; // Nombre d'araignées à générer
+        const SPIDER_ANIMATION_DURATION = 3500; // Durée de la transition complète de l'araignée
+        const SPIDER_DELAY_MS = 30; // Délai entre la création de chaque araignée (effet de nuée)
+        const SPIDER_IMAGE_SRC = 'https://jordydev.com/spider2.apng'; 
+        const SPIDER_SIZE = 80; 
+
+        /**
+         * Calcule le facteur de scale nécessaire pour que le cercle de 100px couvre tout l'écran.
+         * @param {number} x - Coordonnée X du clic (centre du cercle).
+         * @param {number} y - Coordonnée Y du clic (centre du cercle).
+         * @returns {number} Le facteur de scale minimum.
+         */
+        function calculateScaleFactor(x, y) {
+            // Calcul de la distance maximale entre le point de clic (x, y) et les quatre coins du viewport
+            const maxX = Math.max(x, window.innerWidth - x);
+            const maxY = Math.max(y, window.innerHeight - y);
+            // Théorème de Pythagore pour la plus longue distance du centre à un coin
+            const maxDistance = Math.sqrt(maxX * maxX + maxY * maxY);
+            const targetSize = maxDistance * 2; 
+            const initialSize = 100; // La taille initiale du blob
+            return targetSize / initialSize;
+        }
+
+        /**
+         * Crée l'araignée APNG, la positionne et déclenche son animation de fuite aléatoire.
+         * @param {number} startX - Coordonnée X du clic (relative au viewport/client).
+         * @param {number} startY - Coordonnée Y du clic (relative au viewport/client).
+         * @param {number} index - L'index de l'araignée.
+         */
+        function createAndRunSpider(startX, startY, index) {
+            const spider = document.createElement('img');
+            spider.src = SPIDER_IMAGE_SRC; 
+            spider.alt = "[Image d'une araignée animée s'enfuyant]";
+            spider.classList.add('spider-runner', 'active-spider'); 
+            
+            spider.style.transition = `transform ${SPIDER_ANIMATION_DURATION}ms ease-out, opacity ${SPIDER_ANIMATION_DURATION}ms ease-out`;
+
+            // Ajout de l'araignée à l'overlay
+            blobOverlay.appendChild(spider);
+
+            // Calcul du vecteur de mouvement aléatoire dans 8 directions (octants)
+            const OCTANT_SIZE = 45; 
+            const sectorIndex = index % 8; 
+            const baseAngle = sectorIndex * OCTANT_SIZE; 
+            const angleDeg = baseAngle + (Math.random() * OCTANT_SIZE); 
+
+            // Distance de fuite (suffisamment grande pour sortir de l'écran)
+            const distance = Math.max(window.innerWidth, window.innerHeight) * 1.5; 
+            
+            const deltaX = distance * Math.cos(angleDeg * Math.PI / 180);
+            const deltaY = distance * Math.sin(angleDeg * Math.PI / 180);
+
+            // Calcul de la rotation pour aligner le sprite
+            const rotationRad = Math.atan2(deltaY, deltaX);
+            const rotationDeg = rotationRad * (180 / Math.PI) - 90 + 180; 
+
+            // Définir les positions absolues et de centrage (l'araignée doit être centrée sur le point de clic)
+            const centerOffset = SPIDER_SIZE / 2; 
+            
+            const initialX = startX - centerOffset; 
+            const initialY = startY - centerOffset;
+            
+            const initialTransform = `translateX(${initialX}px) translateY(${initialY}px) rotate(${rotationDeg}deg)`;
+            spider.style.transform = initialTransform; 
+
+            const finalX = initialX + deltaX;
+            const finalY = initialY + deltaY;
+            
+            const finalTransform = `translateX(${finalX}px) translateY(${finalY}px) rotate(${rotationDeg}deg)`;
+
+            // Déclenchement de l'animation de fuite
+            requestAnimationFrame(() => {
+                spider.style.transform = finalTransform;
+                spider.style.opacity = 0; 
+                
+                // Nettoyage après la transition
+                setTimeout(() => {
+                    spider.remove();
+                }, SPIDER_ANIMATION_DURATION);
+            });
+        }
+
+        /**
+         * Déclenche l'animation du "blob" et affiche l'histoire dans l'overlay.
+         * @param {Event} e - L'événement de clic, contenant les coordonnées clientX et clientY.
+         */
+        function startBlobTransition(e) {
+            const targetElement = e.currentTarget;
+            const storyId = targetElement.getAttribute('data-story-id');
+            const selectedStory = STORIES.find(s => s.id === storyId);
+
+            if (!selectedStory) {
+                console.error("Story not found for ID:", storyId);
+                return;
+            }
+
+            // --- NOUVEAU : Utilisation des coordonnées exactes du clic ---
+            const clientX = e.clientX; // Coordonnée X du clic
+            const clientY = e.clientY; // Coordonnée Y du clic
+            // -----------------------------------------------------------
+            
+            const scaleFactor = calculateScaleFactor(clientX, clientY);
+
+            // 1. Chargement du contenu de l'histoire
+            storyDisplayTitle.textContent = selectedStory.title;
+            storyContentPlaceholder.innerHTML = selectedStory.content;
+
+            // 2. Préparation de l'animation
+            
+            // Empêche de déclencher à nouveau l'animation
+            storyTitleTriggers.forEach(el => el.style.pointerEvents = 'none');
+            
+            // 3. Préparer l'Overlay : le faire passer devant tout le monde.
+            blobOverlay.style.zIndex = '100'; // Passe le blob au premier plan
+            blobOverlay.style.pointerEvents = 'auto'; // Active la réception des événements dans l'overlay (pour le bouton Retour)
+
+            // Positionner le point de départ du BLOB sur le clic (coordonnées du viewport)
+            blobCircle.style.left = `${clientX}px`;
+            blobCircle.style.top = `${clientY}px`;
+            
+            // 4. Déclencher l'animation (Zoom) et la création des araignées (synchronisé)
+            requestAnimationFrame(() => {
+                 // Application du zoom du blob (1.5s)
+                blobCircle.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
+                
+                // Déclencher les araignées juste au début de l'animation
+                for (let i = 0; i < SPIDER_COUNT; i++) {
+                    setTimeout(() => {
+                        // Ajout d'un très léger décalage aléatoire pour disperser le point de départ de la nuée
+                        const slightShiftX = (Math.random() - 0.5) * 30; 
+                        const slightShiftY = (Math.random() - 0.5) * 30;
+                        
+                        // Utilisation de clientX/clientY (coordonnées du viewport) pour les araignées
+                        createAndRunSpider(clientX + slightShiftX, clientY + slightShiftY, i);
+                    }, i * SPIDER_DELAY_MS); 
+                }
+            });
+
+            // 5. Afficher le texte de l'histoire après l'animation du blob (1.5s)
+            setTimeout(() => {
+                storyContainer.style.opacity = 1; // Début du fondu du texte
+                storyContainer.scrollTo({ top: 0, behavior: 'smooth' }); // Remonter le scroll
+            }, BLOB_ANIMATION_DURATION); 
+        }
+
+        /**
+         * Réinitialise la page en inversant l'effet.
+         */
+        function resetPage() {
+            // Tuer toutes les araignées actives
+            document.querySelectorAll('.active-spider').forEach(spider => spider.remove());
+
+            // 1. Fondu du texte de l'histoire
+            storyContainer.style.opacity = 0; 
+            
+            // 2. Réduction du blob à zéro (effet de fermeture)
+            setTimeout(() => {
+                // Réduire le cercle 
+                blobCircle.style.transform = 'translate(-50%, -50%) scale(0.01)'; 
+                
+                // 3. Nettoyage après la transition de fermeture (1.5s)
+                setTimeout(() => {
+                    blobOverlay.style.zIndex = '50'; // Ramène le blob derrière le contenu principal
+                    blobOverlay.style.pointerEvents = 'none'; // Désactive l'interaction avec le blob
+                    
+                    // Réactiver les triggers de l'histoire
+                    storyTitleTriggers.forEach(el => el.style.pointerEvents = 'auto');
+                }, BLOB_ANIMATION_DURATION); 
+
+            }, 500); // Délai pour que le fondu du texte commence (500ms)
+        }
+
+        // --- ÉVÉNEMENTS ---
+        
+        // Attacher l'événement à tous les titres cliquables
+        storyTitleTriggers.forEach(trigger => {
+            trigger.addEventListener('click', startBlobTransition);
+        });
+
+    </script>
+</body>
+</html>
